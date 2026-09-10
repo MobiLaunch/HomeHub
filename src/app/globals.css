@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --bg-0: #eef1f8;
+  --bg-1: #dfe6f5;
+  --ink: #14161f;
+  --ink-soft: rgba(20, 22, 31, 0.62);
+  --glass-fill: rgba(255, 255, 255, 0.46);
+  --glass-fill-strong: rgba(255, 255, 255, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: rgba(30, 40, 80, 0.16);
+  --accent: #6d6bff;
+  --accent-soft: rgba(109, 107, 255, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-0: #05060c;
+    --bg-1: #0d1120;
+    --ink: #f4f5fb;
+    --ink-soft: rgba(244, 245, 251, 0.66);
+    --glass-fill: rgba(255, 255, 255, 0.07);
+    --glass-fill-strong: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.16);
+    --glass-highlight: rgba(255, 255, 255, 0.28);
+    --glass-shadow: rgba(0, 0, 0, 0.45);
+    --accent: #9c9bff;
+    --accent-soft: rgba(156, 155, 255, 0.22);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-0: #05060c;
+  --bg-1: #0d1120;
+  --ink: #f4f5fb;
+  --ink-soft: rgba(244, 245, 251, 0.66);
+  --glass-fill: rgba(255, 255, 255, 0.07);
+  --glass-fill-strong: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.28);
+  --glass-shadow: rgba(0, 0, 0, 0.45);
+  --accent: #9c9bff;
+  --accent-soft: rgba(156, 155, 255, 0.22);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-0);
+  color: var(--ink);
+  font-family: var(--font-display), -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Inter", "Segoe UI", Roboto, sans-serif;
+}
+
+/* Slowly drifting aurora field behind the whole app — the "liquid" backdrop
+   the glass tiles float over. Fixed + behind everything via z-index. */
+.aurora-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: radial-gradient(circle at 15% 20%, var(--bg-1), transparent 60%),
+    radial-gradient(circle at 85% 15%, rgba(109, 107, 255, 0.25), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(255, 130, 190, 0.18), transparent 55%),
+    radial-gradient(circle at 20% 85%, rgba(90, 200, 250, 0.2), transparent 55%),
+    var(--bg-0);
+}
+
+.aurora-field::before,
+.aurora-field::after {
+  content: "";
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  animation: drift 34s ease-in-out infinite alternate;
+}
+
+.aurora-field::before {
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(109, 107, 255, 0.35), transparent 70%);
+}
+
+.aurora-field::after {
+  bottom: -25%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(255, 145, 200, 0.28), transparent 70%);
+  animation-duration: 42s;
+  animation-delay: -8s;
+}
+
+@keyframes drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6%, 8%) scale(1.08);
+  }
+  100% {
+    transform: translate(-4%, -6%) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-field::before,
+  .aurora-field::after {
+    animation: none;
+  }
+}
+
+/* Liquid Glass tile surface: translucent, blurred, top-edge highlight,
+   soft floating shadow. */
+.glass {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 1px 0 0 var(--glass-highlight) inset,
+    0 1px 24px 0 var(--glass-shadow);
+  border-radius: 28px;
+}
+
+.glass-strong {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(36px) saturate(190%);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  box-shadow:
+    0 1px 0 0 var(--glass-highlight) inset,
+    0 8px 40px 0 var(--glass-shadow);
+  border-radius: 28px;
+}
+
+.glass-pill {
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

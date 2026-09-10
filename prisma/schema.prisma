@@ -1,0 +1,101 @@
+// Prisma schema for HomeHub — a single-household "appliance" dashboard.
+// There is intentionally no multi-tenant User/auth model: the hub is one
+// shared screen for one household, and Household holds the one settings row.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Singleton row (id always "default") holding onboarding + display prefs.
+model Household {
+  id             String   @id @default("default")
+  name           String   @default("Our Home")
+  timezone       String   @default("UTC")
+  accentColor    String   @default("indigo")
+  setupCompleted Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum IntegrationProvider {
+  google
+  microsoft
+  slack
+  facebook
+  apple
+}
+
+enum IntegrationStatus {
+  connected
+  needs_reauth
+  error
+  disconnected
+}
+
+// One row per connected account per provider (a household could connect
+// more than one Slack workspace, more than one Google account, etc).
+model Integration {
+  id                String              @id @default(cuid())
+  provider          IntegrationProvider
+  status            IntegrationStatus   @default(disconnected)
+  label             String // e.g. connected account email / workspace name
+  externalAccountId String? // provider-side user/team id, for dedupe
+
+  // OAuth token material, encrypted at rest (AES-256-GCM) — see lib/crypto.ts.
+  // Never stored or logged in plaintext.
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime?
+  scope           String?
+
+  // For credential-based providers (Apple CalDAV): encrypted app-specific
+  // password. appleAppleId is the Apple ID email, not secret.
+  credentialUsername String?
+  credentialSecretEnc String?
+
+  lastSyncedAt DateTime?
+  lastError    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, externalAccountId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  text      String
+  color     String   @default("yellow")
+  x         Float    @default(0)
+  y         Float    @default(0)
+  rotation  Float    @default(0)
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sticker {
+  id        String   @id @default(cuid())
+  emoji     String
+  x         Float    @default(0)
+  y         Float    @default(0)
+  rotation  Float    @default(0)
+  scale     Float    @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Dashboard tile visibility + ordering, keyed by a stable tile type string
+// (e.g. "calendar", "messages", "notifications", "notes", "stickers", "weather").
+model TilePreference {
+  id       String  @id @default(cuid())
+  tileType String  @unique
+  enabled  Boolean @default(true)
+  position Int     @default(0)
+  size     String  @default("md") // sm | md | lg — grid span
+}
