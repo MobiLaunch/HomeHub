@@ -6,7 +6,7 @@ import { GreetingHeader } from "@/components/dashboard/GreetingHeader";
 import { Tile } from "@/components/dashboard/Tile";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
 import { MessagesTile } from "@/components/dashboard/MessagesTile";
-import { NotificationsTile } from "@/components/dashboard/NotificationsTile";
+import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
 import { NotesTile } from "@/components/dashboard/NotesTile";
 import { StickerBoard } from "@/components/dashboard/StickerBoard";
 
@@ -27,9 +27,9 @@ const TILE_REGISTRY: Record<
     render: () => <MessagesTile />,
   },
   notifications: {
-    title: "Notifications",
+    title: "Live activity",
     icon: <Bell className="h-4 w-4" />,
-    render: () => <NotificationsTile />,
+    render: () => <LiveActivityStack />,
   },
   notes: {
     title: "Notes",

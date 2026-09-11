@@ -12,7 +12,7 @@ type TilePref = { tileType: string; enabled: boolean };
 const TILE_META: Record<string, { label: string; icon: typeof CalendarDays }> = {
   calendar: { label: "Calendar", icon: CalendarDays },
   messages: { label: "Messages", icon: MessageSquare },
-  notifications: { label: "Notifications", icon: Bell },
+  notifications: { label: "Live activity", icon: Bell },
   notes: { label: "Notes", icon: StickyNote },
   stickers: { label: "Stickers", icon: Sparkles },
 };

@@ -12,7 +12,7 @@ const STEP_LABELS = ["Welcome", "Your home", "Connect accounts", "Choose tiles",
 const TILE_META: Record<string, { label: string; icon: typeof CalendarDays; hint: string }> = {
   calendar: { label: "Calendar", icon: CalendarDays, hint: "Upcoming events across every connected calendar" },
   messages: { label: "Messages", icon: MessageSquare, hint: "Recent Slack & Teams activity" },
-  notifications: { label: "Notifications", icon: Bell, hint: "Birthdays and social reminders" },
+  notifications: { label: "Live activity", icon: Bell, hint: "A flippable stack of new messages, upcoming events, and reminders" },
   notes: { label: "Notes", icon: StickyNote, hint: "Sticky notes anyone in the house can leave" },
   stickers: { label: "Stickers", icon: Sparkles, hint: "A playful corkboard for the family" },
 };
