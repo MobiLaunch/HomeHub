@@ -12,6 +12,8 @@ import {
   Link as LinkIcon,
   Unlink,
   LoaderCircle as LoaderIcon,
+  TriangleAlert,
+  RefreshCw,
 } from "lucide-react";
 
 type ProviderAccount = {
@@ -42,7 +44,7 @@ const ICONS: Record<ProviderInfo["id"], typeof CalendarDays> = {
 const INTEGRATIONS_URL = "/api/integrations";
 
 export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings" }) {
-  const { data } = useLive<{ providers: ProviderInfo[] }>(INTEGRATIONS_URL, 60_000);
+  const { data, error, isLoading } = useLive<{ providers: ProviderInfo[] }>(INTEGRATIONS_URL, 60_000);
   const providers = data?.providers ?? null;
   const [appleForm, setAppleForm] = useState<{ appleId: string; appPassword: string }>({
     appleId: "",
@@ -81,7 +83,25 @@ export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings"
     }
   }
 
-  if (!providers) {
+  if (error) {
+    return (
+      <div className="glass flex flex-col items-start gap-2 p-4 text-sm" style={{ color: "var(--ink)" }}>
+        <span className="flex items-center gap-2 font-medium">
+          <TriangleAlert className="h-4 w-4 text-rose-500" /> Couldn&apos;t load integrations
+        </span>
+        <span style={{ color: "var(--ink-soft)" }}>{error.message}</span>
+        <button
+          onClick={() => mutate(INTEGRATIONS_URL)}
+          className="glass-pill mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
+          style={{ color: "var(--accent)" }}
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoading || !providers) {
     return (
       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-soft)" }}>
         <LoaderIcon className="h-4 w-4 animate-spin" /> Loading integrations…

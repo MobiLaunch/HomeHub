@@ -2,12 +2,12 @@
 
 A tile-first household dashboard: one glanceable screen for your calendars,
 messages, birthdays, notes, and stickers — built as a real, live web app on
-Next.js 16 + Prisma/SQLite, with a "liquid glass" translucent UI.
+Next.js 16 + Prisma/Postgres, with a "liquid glass" translucent UI.
 
-The app runs fully out of the box against a local SQLite database with no
-integrations connected — you'll just see empty tiles and "not yet configured"
-badges until you wire up accounts from **Settings**. Nothing is mocked: every
-tile calls a real provider API once you connect it.
+The app runs fully with no integrations connected — you'll just see empty
+tiles and "not yet configured" badges until you wire up accounts from
+**Settings**. Nothing is mocked: every tile calls a real provider API once
+you connect it. It does need a real Postgres database, though — see below.
 
 ## What's here
 
@@ -23,11 +23,18 @@ tile calls a real provider API once you connect it.
 
 ## Getting started
 
+You need a Postgres database — any Postgres works (local, Neon, Supabase,
+Railway, Vercel Postgres). SQLite deliberately isn't supported: it doesn't
+survive on serverless hosts like Vercel (no persistent disk between
+invocations), which is exactly the bug that made this app's own Settings
+page hang forever until this got fixed.
+
 ```bash
 npm install
 cp .env.example .env
 # generate a real key and paste it into ENCRYPTION_KEY in .env:
 openssl rand -base64 32
+# paste a Postgres connection string into DATABASE_URL in .env, then:
 npx prisma migrate deploy
 npm run dev
 ```
@@ -35,6 +42,17 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000). You'll land on the setup
 wizard on first run; after that the splash screen routes straight to the
 dashboard.
+
+### Deploying on Vercel
+
+1. Project → Storage → Create Database → Postgres. This auto-injects the
+   connection env vars for you — make sure one of them is (or is copied
+   into) `DATABASE_URL`, since that's what Prisma reads.
+2. Add `ENCRYPTION_KEY` and `APP_URL` (your deployed domain) in Project →
+   Settings → Environment Variables.
+3. Deploy. The build runs `npm run vercel-build`, which applies
+   `prisma migrate deploy` against your Postgres database automatically on
+   every deploy — no manual migration step needed.
 
 ## Connecting real accounts
 
@@ -70,7 +88,7 @@ A couple of honest platform limits, so the tiles don't over-promise:
 ## Tech
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
-Prisma 7 + `better-sqlite3` driver adapter · framer-motion · SWR for live
+Prisma 7 + `pg` driver adapter (Postgres) · framer-motion · SWR for live
 polling.
 
 ## Project structure
