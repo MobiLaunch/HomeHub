@@ -9,12 +9,12 @@ const SOURCE_META = {
   google: { label: "Google", mark: "G" },
   microsoft: { label: "Microsoft", mark: "M" },
   apple: { label: "Apple", mark: "" },
+  facebook: { label: "Facebook", mark: "f" },
 } as const;
 
 function dayKey(value: string) {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
 }
-
 function dayLabel(value: string) {
   const date = new Date(value);
   const today = new Date();
@@ -24,7 +24,6 @@ function dayLabel(value: string) {
   if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
   return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 }
-
 function timeLabel(event: CalendarEvent) {
   if (event.allDay) return "All day";
   return new Date(event.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
@@ -49,12 +48,7 @@ export function CalendarTile() {
         {Object.entries(SOURCE_META).map(([source, meta]) => {
           const count = events.filter((event) => event.source === source).length;
           if (!count) return null;
-          return (
-            <span key={source} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}>
-              <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]" style={{ background: "var(--glass-fill)", color: "var(--ink)" }}>{meta.mark}</span>
-              {meta.label} · {count}
-            </span>
-          );
+          return <span key={source} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}><span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]" style={{ background: "var(--glass-fill)", color: "var(--ink)" }}>{meta.mark}</span>{meta.label} · {count}</span>;
         })}
         <span className="ml-auto text-xs" style={{ color: "var(--ink-soft)" }}>{events.length} upcoming</span>
       </div>
@@ -72,18 +66,9 @@ export function CalendarTile() {
                 <div className="space-y-2">
                   {dayEvents.map((event) => (
                     <motion.article key={event.id} layout whileHover={{ x: 2 }} className="group grid grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 sm:grid-cols-[5.5rem_1fr]" style={{ background: "var(--glass-fill-strong)" }}>
-                      <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-                        <div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{timeLabel(event)}</div>
-                      </div>
+                      <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
                       <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
-                        <div className="flex items-start gap-2">
-                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p>
-                            <p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>
-                            {event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><MapPin className="h-3 w-3 shrink-0" />{event.location}</p>}
-                          </div>
-                        </div>
+                        <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><MapPin className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
                       </div>
                     </motion.article>
                   ))}
