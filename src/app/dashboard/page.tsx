@@ -64,10 +64,10 @@ export default function DashboardPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-8">
       <GreetingHeader householdName={householdName} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {visibleTiles.map((tile) => {
+        {visibleTiles.map((tile, index) => {
           const meta = TILE_REGISTRY[tile.tileType];
           return (
-            <Tile key={tile.tileType} title={meta.title} icon={meta.icon} size={tile.size}>
+            <Tile key={tile.tileType} title={meta.title} icon={meta.icon} size={tile.size} index={index}>
               {meta.render()}
             </Tile>
           );

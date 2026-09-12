@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import { CalendarDays } from "lucide-react";
 import { useLive } from "@/hooks/useLive";
 import type { CalendarEvent } from "@/lib/integrations/live";
@@ -39,34 +40,50 @@ export function CalendarTile() {
 
   return (
     <ul className="flex flex-col gap-2">
-      {events.slice(0, 6).map((event) => (
-        <li key={event.id} className="flex items-start gap-3 rounded-2xl px-3 py-2.5" style={{ background: "var(--glass-fill-strong)" }}>
-          <span
-            className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-            style={{ background: SOURCE_COLOR[event.source] }}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium" style={{ color: "var(--ink)" }}>
-              {event.title}
-            </p>
-            <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-              {formatWhen(event)}
-              {event.location ? ` · ${event.location}` : ""}
-            </p>
-          </div>
-        </li>
-      ))}
+      <AnimatePresence initial={false}>
+        {events.slice(0, 6).map((event, i) => (
+          <motion.li
+            key={event.id}
+            layout
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 8 }}
+            transition={{ duration: 0.25, delay: i * 0.03 }}
+            whileHover={{ x: 3, background: "var(--glass-fill)" }}
+            className="flex items-start gap-3 rounded-2xl px-3 py-2.5"
+            style={{ background: "var(--glass-fill-strong)" }}
+          >
+            <span
+              className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+              style={{ background: SOURCE_COLOR[event.source] }}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium" style={{ color: "var(--ink)" }}>
+                {event.title}
+              </p>
+              <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
+                {formatWhen(event)}
+                {event.location ? ` · ${event.location}` : ""}
+              </p>
+            </div>
+          </motion.li>
+        ))}
+      </AnimatePresence>
     </ul>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center"
+    >
       <CalendarDays className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
       <p className="max-w-[220px] text-xs" style={{ color: "var(--ink-soft)" }}>
         {text}
       </p>
-    </div>
+    </motion.div>
   );
 }

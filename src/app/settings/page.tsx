@@ -3,9 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, CalendarDays, MessageSquare, Bell, StickyNote, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, CalendarDays, MessageSquare, Bell, StickyNote, Sparkles, Check } from "lucide-react";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 
 type TilePref = { tileType: string; enabled: boolean };
 
@@ -23,12 +25,14 @@ function SettingsBanner() {
   const error = searchParams.get("error");
   if (!connected && !error) return null;
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
       className="glass px-4 py-3 text-sm"
       style={{ color: connected ? "#059669" : "#e11d48" }}
     >
       {connected ? `Connected ${connected} successfully.` : `Couldn't connect: ${error}`}
-    </div>
+    </motion.div>
   );
 }
 
@@ -37,6 +41,16 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState("");
   const [tiles, setTiles] = useState<TilePref[] | null>(null);
   const [saved, setSaved] = useState(false);
+  const {
+    ref: householdGlowRef,
+    onPointerMove: householdGlowMove,
+    onPointerLeave: householdGlowLeave,
+  } = usePointerGlow<HTMLElement>();
+  const {
+    ref: tilesGlowRef,
+    onPointerMove: tilesGlowMove,
+    onPointerLeave: tilesGlowLeave,
+  } = usePointerGlow<HTMLElement>();
 
   useEffect(() => {
     fetch("/api/household")
@@ -73,14 +87,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8">
+    <motion.main
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8"
+    >
       <div className="flex items-center gap-3">
-        <Link
-          href="/dashboard"
-          className="glass-pill flex h-9 w-9 items-center justify-center"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
+        <Link href="/dashboard" aria-label="Back to dashboard">
+          <motion.span
+            whileHover={{ x: -2 }}
+            whileTap={{ scale: 0.9 }}
+            className="glass-pill flex h-9 w-9 items-center justify-center"
+          >
+            <ArrowLeft className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
+          </motion.span>
         </Link>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
           Settings
@@ -91,19 +112,24 @@ export default function SettingsPage() {
         <SettingsBanner />
       </Suspense>
 
-      <section className="glass flex flex-col gap-4 p-5">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+      <section
+        ref={householdGlowRef}
+        onPointerMove={householdGlowMove}
+        onPointerLeave={householdGlowLeave}
+        className="glass glow flex flex-col gap-4 p-5"
+      >
+        <h2 className="relative z-10 text-sm font-semibold" style={{ color: "var(--ink)" }}>
           Household
         </h2>
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative z-10 flex flex-col gap-3 sm:flex-row">
           <label className="flex flex-1 flex-col gap-1.5 text-sm" style={{ color: "var(--ink-soft)" }}>
             Name
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={saveHousehold}
-              className="glass-pill px-4 py-2 text-sm outline-none"
-              style={{ color: "var(--ink)" }}
+              className="glass-pill px-4 py-2 text-sm outline-none transition-shadow focus:ring-2"
+              style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties}
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5 text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -112,13 +138,26 @@ export default function SettingsPage() {
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               onBlur={saveHousehold}
-              className="glass-pill px-4 py-2 text-sm outline-none"
-              style={{ color: "var(--ink)" }}
+              className="glass-pill px-4 py-2 text-sm outline-none transition-shadow focus:ring-2"
+              style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties}
             />
           </label>
         </div>
-        {saved && <p className="text-xs text-emerald-500">Saved</p>}
-        <div>
+        <div className="relative z-10 h-4">
+          <AnimatePresence>
+            {saved && (
+              <motion.p
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-1 text-xs text-emerald-500"
+              >
+                <Check className="h-3 w-3" /> Saved
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="relative z-10">
           <p className="mb-1.5 text-xs" style={{ color: "var(--ink-soft)" }}>
             Appearance
           </p>
@@ -126,29 +165,38 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="glass flex flex-col gap-4 p-5">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+      <section
+        ref={tilesGlowRef}
+        onPointerMove={tilesGlowMove}
+        onPointerLeave={tilesGlowLeave}
+        className="glass glow flex flex-col gap-4 p-5"
+      >
+        <h2 className="relative z-10 text-sm font-semibold" style={{ color: "var(--ink)" }}>
           Dashboard tiles
         </h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="relative z-10 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(tiles ?? []).map((tile) => {
             const meta = TILE_META[tile.tileType];
             if (!meta) return null;
             const Icon = meta.icon;
             return (
-              <button
+              <motion.button
                 key={tile.tileType}
                 onClick={() => toggleTile(tile.tileType)}
-                className="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm transition"
-                style={{
-                  background: "var(--glass-fill-strong)",
-                  opacity: tile.enabled ? 1 : 0.5,
-                  color: "var(--ink)",
-                }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                animate={{ opacity: tile.enabled ? 1 : 0.5 }}
+                className="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm"
+                style={{ background: "var(--glass-fill-strong)", color: "var(--ink)" }}
               >
-                <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                <motion.span
+                  animate={{ rotate: tile.enabled ? 0 : -20, scale: tile.enabled ? 1 : 0.9 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                </motion.span>
                 {meta.label}
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -160,6 +208,6 @@ export default function SettingsPage() {
         </h2>
         <IntegrationsPanel returnTo="settings" />
       </section>
-    </main>
+    </motion.main>
   );
 }

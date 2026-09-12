@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Sun, Moon, Monitor } from "lucide-react";
 
 type Theme = "system" | "light" | "dark";
@@ -38,21 +39,31 @@ export function ThemeToggle() {
   ];
 
   return (
-    <div className="glass-pill inline-flex p-1">
-      {options.map(({ value, icon: Icon, label }) => (
-        <button
-          key={value}
-          onClick={() => choose(value)}
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition"
-          style={{
-            background: theme === value ? "var(--accent)" : "transparent",
-            color: theme === value ? "white" : "var(--ink-soft)",
-          }}
-        >
-          <Icon className="h-3.5 w-3.5" />
-          {label}
-        </button>
-      ))}
+    <div className="glass-pill relative inline-flex p-1">
+      {options.map(({ value, icon: Icon, label }) => {
+        const active = theme === value;
+        return (
+          <button
+            key={value}
+            onClick={() => choose(value)}
+            className="relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+            style={{ color: active ? "white" : "var(--ink-soft)" }}
+          >
+            {active && (
+              <motion.span
+                layoutId="theme-toggle-active"
+                transition={{ type: "spring", stiffness: 500, damping: 32 }}
+                className="absolute inset-0 rounded-full"
+                style={{ background: "var(--accent)" }}
+              />
+            )}
+            <span className="relative flex items-center gap-1.5">
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -12,6 +12,9 @@
   --glass-shadow: rgba(30, 40, 80, 0.16);
   --accent: #6d6bff;
   --accent-soft: rgba(109, 107, 255, 0.16);
+  /* Tinted (not white) so the pointer-glow shows up against an
+     already-light glass surface — plain white-on-white has no contrast. */
+  --glow-color: rgba(109, 107, 255, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +30,7 @@
     --glass-shadow: rgba(0, 0, 0, 0.45);
     --accent: #9c9bff;
     --accent-soft: rgba(156, 155, 255, 0.22);
+    --glow-color: rgba(255, 255, 255, 0.55);
   }
 }
 
@@ -42,6 +46,7 @@
   --glass-shadow: rgba(0, 0, 0, 0.45);
   --accent: #9c9bff;
   --accent-soft: rgba(156, 155, 255, 0.22);
+  --glow-color: rgba(255, 255, 255, 0.55);
 }
 
 @theme inline {
@@ -126,9 +131,13 @@ body {
 }
 
 /* Liquid Glass tile surface: translucent, blurred, top-edge highlight,
-   soft floating shadow. */
+   soft floating shadow, plus a diagonal specular sheen layered directly
+   into the background (no pseudo-element, so it can't fight any element's
+   own `position` utility — see `.glow` below for why that matters). */
 .glass {
-  background: var(--glass-fill);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.4) 4%, transparent 26%, transparent 74%, rgba(255, 255, 255, 0.14) 96%),
+    var(--glass-fill);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
@@ -136,10 +145,13 @@ body {
     0 1px 0 0 var(--glass-highlight) inset,
     0 1px 24px 0 var(--glass-shadow);
   border-radius: 28px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .glass-strong {
-  background: var(--glass-fill-strong);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.45) 4%, transparent 26%, transparent 74%, rgba(255, 255, 255, 0.16) 96%),
+    var(--glass-fill-strong);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(36px) saturate(190%);
   -webkit-backdrop-filter: blur(36px) saturate(190%);
@@ -147,14 +159,99 @@ body {
     0 1px 0 0 var(--glass-highlight) inset,
     0 8px 40px 0 var(--glass-shadow);
   border-radius: 28px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .glass-pill {
-  background: var(--glass-fill-strong);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.4) 6%, transparent 40%),
+    var(--glass-fill-strong);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: 999px;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.glass-pill:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px 0 var(--glass-shadow);
+}
+
+.glass-pill:active {
+  transform: translateY(0) scale(0.96);
+  transition-duration: 0.08s;
+}
+
+/* Opt-in cursor-tracked specular highlight. Only applied to elements that
+   don't rely on their own `position: absolute/fixed` utility (e.g. the
+   fanned notification cards) — this rule's `position: relative` would
+   otherwise fight Tailwind's positioning utility, since Tailwind's own
+   utilities live inside a lower-precedence @layer and would lose that
+   battle regardless of source order. */
+.glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 3;
+  opacity: var(--glow-o, 0);
+  background: radial-gradient(
+    260px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    var(--glow-color),
+    transparent 62%
+  );
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.glow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px 0 var(--glass-shadow);
+}
+
+/* Same specular highlight as `.glow::before`, but as a standalone element
+   for surfaces that must keep their own `position: absolute` (like the
+   fanned notification cards) rather than getting it from `.glow`. CSS
+   custom properties set on the parent (via usePointerGlow) inherit down
+   to this child automatically. */
+.glow-overlay {
+  position: absolute;
+  inset: -1px;
+  z-index: 3;
+  opacity: var(--glow-o, 0);
+  background: radial-gradient(
+    260px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    var(--glow-color),
+    transparent 62%
+  );
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-overlay {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass,
+  .glass-strong,
+  .glass-pill,
+  .glow {
+    transition: none;
+  }
+  .glow:hover {
+    transform: none;
+  }
 }
 
 ::-webkit-scrollbar {

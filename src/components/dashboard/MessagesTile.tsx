@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare } from "lucide-react";
 import { useLive } from "@/hooks/useLive";
 import type { LiveMessage } from "@/lib/integrations/live";
@@ -27,32 +28,48 @@ export function MessagesTile() {
 
   return (
     <ul className="flex flex-col gap-2">
-      {messages.slice(0, 6).map((message) => (
-        <li key={message.id} className="rounded-2xl px-3 py-2.5" style={{ background: "var(--glass-fill-strong)" }}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-medium" style={{ color: "var(--ink)" }}>
-              {message.author} · <span style={{ color: "var(--ink-soft)" }}>{message.channel}</span>
-            </span>
-            <span className="shrink-0 text-[11px]" style={{ color: "var(--ink-soft)" }}>
-              {timeAgo(message.timestamp)}
-            </span>
-          </div>
-          <p className="truncate text-xs" style={{ color: "var(--ink-soft)" }}>
-            {message.text}
-          </p>
-        </li>
-      ))}
+      <AnimatePresence initial={false}>
+        {messages.slice(0, 6).map((message, i) => (
+          <motion.li
+            key={message.id}
+            layout
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 8 }}
+            transition={{ duration: 0.25, delay: i * 0.03 }}
+            whileHover={{ x: 3, background: "var(--glass-fill)" }}
+            className="rounded-2xl px-3 py-2.5"
+            style={{ background: "var(--glass-fill-strong)" }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-medium" style={{ color: "var(--ink)" }}>
+                {message.author} · <span style={{ color: "var(--ink-soft)" }}>{message.channel}</span>
+              </span>
+              <span className="shrink-0 text-[11px]" style={{ color: "var(--ink-soft)" }}>
+                {timeAgo(message.timestamp)}
+              </span>
+            </div>
+            <p className="truncate text-xs" style={{ color: "var(--ink-soft)" }}>
+              {message.text}
+            </p>
+          </motion.li>
+        ))}
+      </AnimatePresence>
     </ul>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center"
+    >
       <MessageSquare className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
       <p className="max-w-[220px] text-xs" style={{ color: "var(--ink-soft)" }}>
         {text}
       </p>
-    </div>
+    </motion.div>
   );
 }

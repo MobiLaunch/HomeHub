@@ -92,18 +92,42 @@ function SetupWizard() {
       <div className="flex items-center justify-center gap-2">
         {STEP_LABELS.map((label, i) => (
           <div key={label} className="flex items-center gap-2">
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium transition"
-              style={{
+            <motion.div
+              animate={{
                 background: i <= step ? "var(--accent)" : "var(--glass-fill)",
-                color: i <= step ? "white" : "var(--ink-soft)",
-                border: i <= step ? "none" : "1px solid var(--glass-border)",
+                color: i <= step ? "#ffffff" : "var(--ink-soft)",
+                scale: i === step ? 1.15 : 1,
               }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium"
+              style={{ border: i <= step ? "none" : "1px solid var(--glass-border)" }}
             >
-              {i < step ? <Check className="h-3 w-3" /> : i + 1}
-            </div>
+              <AnimatePresence mode="wait" initial={false}>
+                {i < step ? (
+                  <motion.span
+                    key="check"
+                    initial={{ scale: 0, rotate: -45 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 18 }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </motion.span>
+                ) : (
+                  <motion.span key="num" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    {i + 1}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.div>
             {i < STEP_LABELS.length - 1 && (
-              <div className="h-px w-6" style={{ background: "var(--glass-border)" }} />
+              <div className="relative h-px w-6 overflow-hidden" style={{ background: "var(--glass-border)" }}>
+                <motion.div
+                  className="absolute inset-y-0 left-0 h-full"
+                  style={{ background: "var(--accent)" }}
+                  animate={{ width: i < step ? "100%" : "0%" }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                />
+              </div>
             )}
           </div>
         ))}
@@ -197,14 +221,19 @@ function SetupWizard() {
                     if (!meta) return null;
                     const Icon = meta.icon;
                     return (
-                      <button
+                      <motion.button
                         key={tile.tileType}
                         onClick={() => toggleTile(tile.tileType)}
-                        className="glass flex items-start gap-3 p-4 text-left transition"
-                        style={{
-                          outline: tile.enabled ? "2px solid var(--accent)" : "none",
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        animate={{
+                          boxShadow: tile.enabled
+                            ? "0 0 0 2px var(--accent)"
+                            : "0 0 0 0px transparent",
                           opacity: tile.enabled ? 1 : 0.55,
                         }}
+                        transition={{ duration: 0.2 }}
+                        className="glass relative flex items-start gap-3 p-4 text-left"
                       >
                         <Icon className="mt-0.5 h-5 w-5" style={{ color: "var(--accent)" }} />
                         <span>
@@ -215,7 +244,21 @@ function SetupWizard() {
                             {meta.hint}
                           </span>
                         </span>
-                      </button>
+                        <AnimatePresence>
+                          {tile.enabled && (
+                            <motion.span
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0, opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                              className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full"
+                              style={{ background: "var(--accent)" }}
+                            >
+                              <Check className="h-3 w-3 text-white" />
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
                     );
                   })}
                 </div>

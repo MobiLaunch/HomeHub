@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Settings } from "lucide-react";
 
 function greetingFor(hour: number) {
@@ -26,11 +27,25 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
   }, []);
 
   return (
-    <header className="flex items-center justify-between gap-4">
+    <motion.header
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="flex items-center justify-between gap-4"
+    >
       <div>
-        <p className="text-3xl font-semibold tracking-tight" style={{ color: "var(--ink)" }}>
-          {now ? greetingFor(now.getHours()) : "Hello"}, {householdName}
-        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={now ? greetingFor(now.getHours()) : "hello"}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="text-3xl font-semibold tracking-tight"
+            style={{ color: "var(--ink)" }}
+          >
+            {now ? greetingFor(now.getHours()) : "Hello"}, {householdName}
+          </motion.p>
+        </AnimatePresence>
         <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
           {now
             ? now.toLocaleDateString(undefined, {
@@ -44,13 +59,16 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
             : ""}
         </p>
       </div>
-      <Link
-        href="/settings"
-        className="glass-pill flex h-11 w-11 shrink-0 items-center justify-center transition hover:opacity-80"
-        aria-label="Settings"
-      >
-        <Settings className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+      <Link href="/settings" aria-label="Settings">
+        <motion.span
+          whileHover={{ rotate: 75 }}
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring", stiffness: 260, damping: 18 }}
+          className="glass-pill flex h-11 w-11 shrink-0 items-center justify-center"
+        >
+          <Settings className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+        </motion.span>
       </Link>
-    </header>
+    </motion.header>
   );
 }

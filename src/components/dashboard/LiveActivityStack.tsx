@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarDays, Cake, ChevronRight, MapPin, Clock } from "lucide-react";
 import { useLive } from "@/hooks/useLive";
+import { usePointerGlow } from "@/hooks/usePointerGlow";
 import type { CalendarEvent, LiveMessage, LiveNotification } from "@/lib/integrations/live";
 
 type ActivityItem =
@@ -33,6 +34,7 @@ export function LiveActivityStack() {
     5 * 60_000,
   );
   const [front, setFront] = useState(0);
+  const { ref: glowRef, onPointerMove: glowMove, onPointerLeave: glowLeave } = usePointerGlow<HTMLButtonElement>();
 
   const items: ActivityItem[] = [
     ...(messagesData?.messages ?? []).slice(0, 2).map(
@@ -110,15 +112,23 @@ export function LiveActivityStack() {
               return (
                 <motion.button
                   key={`${item.kind}-${item.id}-${frontIndex}`}
+                  ref={glowRef}
+                  onPointerMove={glowMove}
+                  onPointerLeave={glowLeave}
                   onClick={advance}
                   initial={false}
-                  animate={{ y: 0, scale: 1, rotate: 0, opacity: 1 }}
-                  exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.25 } }}
+                  animate={{ y: 0, x: 0, scale: 1, rotate: 0, opacity: 1 }}
+                  exit={{ y: -40, x: 24, opacity: 0, scale: 0.92, rotate: 6, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97, rotate: -1 }}
                   transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                   style={{ zIndex: layers }}
                   className="glass-strong absolute inset-x-0 top-0 flex h-44 flex-col gap-2 overflow-hidden p-5 text-left"
                 >
-                  <ActivityCardContent item={item} />
+                  <div className="glow-overlay" aria-hidden="true" />
+                  <div className="relative z-10 flex flex-1 flex-col gap-2">
+                    <ActivityCardContent item={item} />
+                  </div>
                 </motion.button>
               );
             })}
@@ -128,13 +138,18 @@ export function LiveActivityStack() {
       {items.length > 1 && (
         <div className="flex items-center gap-2">
           {items.map((item, i) => (
-            <span
+            <motion.button
               key={`${item.kind}-${item.id}`}
-              className="h-1.5 rounded-full transition-all"
+              onClick={() => setFront(i)}
+              whileHover={{ scale: 1.3 }}
+              whileTap={{ scale: 0.9 }}
+              className="h-1.5 rounded-full"
+              animate={{ width: i === frontIndex ? 16 : 6 }}
+              transition={{ type: "spring", stiffness: 500, damping: 32 }}
               style={{
-                width: i === frontIndex ? 16 : 6,
                 background: i === frontIndex ? "var(--accent)" : "var(--glass-border)",
               }}
+              aria-label={`Show item ${i + 1}`}
             />
           ))}
         </div>

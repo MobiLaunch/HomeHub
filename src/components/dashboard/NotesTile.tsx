@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2 } from "lucide-react";
 import { useLive } from "@/hooks/useLive";
 import { mutate } from "swr";
@@ -27,6 +28,12 @@ export function NotesTile() {
   }
 
   async function removeNote(id: string) {
+    mutate(
+      "/api/notes",
+      (current: { notes: Note[] } | undefined) =>
+        current && { notes: current.notes.filter((n) => n.id !== id) },
+      { revalidate: false },
+    );
     await fetch(`/api/notes/${id}`, { method: "DELETE" });
     mutate("/api/notes");
   }
@@ -39,34 +46,44 @@ export function NotesTile() {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addNote()}
           placeholder="Leave a note for the house…"
-          className="glass-pill flex-1 px-4 py-2 text-sm outline-none"
-          style={{ color: "var(--ink)" }}
+          className="glass-pill flex-1 px-4 py-2 text-sm outline-none transition-shadow focus:ring-2"
+          style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties}
         />
-        <button
+        <motion.button
           onClick={addNote}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.92, rotate: -8 }}
           className="glass-pill flex h-9 w-9 shrink-0 items-center justify-center"
           aria-label="Add note"
         >
           <Plus className="h-4 w-4" style={{ color: "var(--accent)" }} />
-        </button>
+        </motion.button>
       </div>
       <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-        {notes.map((note) => (
-          <div
-            key={note.id}
-            className="group relative rounded-2xl p-3 text-xs shadow-sm"
-            style={{ background: note.color, color: "#1f2430" }}
-          >
-            <p className="pr-4 leading-snug break-words">{note.text}</p>
-            <button
-              onClick={() => removeNote(note.id)}
-              className="absolute right-1.5 top-1.5 rounded-full p-1 opacity-0 transition group-hover:opacity-70"
-              aria-label="Delete note"
+        <AnimatePresence initial={false}>
+          {notes.map((note) => (
+            <motion.div
+              key={note.id}
+              layout
+              initial={{ opacity: 0, scale: 0.5, rotate: -6 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.6, rotate: 8, transition: { duration: 0.2 } }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              whileHover={{ y: -3, rotate: -1.5 }}
+              className="group relative rounded-2xl p-3 text-xs shadow-sm"
+              style={{ background: note.color, color: "#1f2430" }}
             >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
+              <p className="pr-4 leading-snug break-words">{note.text}</p>
+              <button
+                onClick={() => removeNote(note.id)}
+                className="absolute right-1.5 top-1.5 rounded-full p-1 opacity-0 transition group-hover:opacity-70 hover:!opacity-100"
+                aria-label="Delete note"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
         {notes.length === 0 && (
           <p className="col-span-full py-6 text-center text-xs" style={{ color: "var(--ink-soft)" }}>
             No notes yet — leave one above.
