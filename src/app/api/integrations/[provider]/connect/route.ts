@@ -14,14 +14,18 @@ export async function GET(
     return NextResponse.json({ error: "Unknown or non-OAuth provider" }, { status: 400 });
   }
 
-  const from = new URL(request.url).searchParams.get("from") === "setup" ? "setup" : "settings";
+  const requestUrl = new URL(request.url);
+  const from = requestUrl.searchParams.get("from") === "setup" ? "setup" : "settings";
   const state = generateState();
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const origin = forwardedProto && forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : requestUrl.origin;
+  const redirectUri = `${origin}/api/integrations/${provider}/callback`;
   const cookieStore = await cookies();
 
-  // Keep the OAuth state cookie scoped to the canonical application origin.
-  // The callback URI sent to the provider is also derived from APP_URL, so
-  // Google sees exactly the same URI that is configured in its OAuth client.
-  cookieStore.set(`${OAUTH_STATE_COOKIE_PREFIX}${provider}`, `${state}:${from}`, {
+  cookieStore.set(`${OAUTH_STATE_COOKIE_PREFIX}${provider}`, JSON.stringify({ state, from, redirectUri }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -29,5 +33,5 @@ export async function GET(
     path: "/",
   });
 
-  return NextResponse.redirect(buildAuthorizeUrl(config, state));
+  return NextResponse.redirect(buildAuthorizeUrl(config, state, redirectUri));
 }
