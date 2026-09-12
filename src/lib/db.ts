@@ -3,11 +3,23 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+function getConnectionString(): string | undefined {
+  // DATABASE_URL is the canonical setting, but Vercel Postgres commonly
+  // exposes the same database through POSTGRES_PRISMA_URL/POSTGRES_URL.
+  // Supporting those names prevents every API route from failing with a
+  // database connection error when the storage integration is configured.
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL
+  );
+}
+
 function createClient() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = getConnectionString();
   if (!connectionString) {
     throw new Error(
-      "DATABASE_URL is not set. Add a Postgres connection string (e.g. from Vercel Storage or Neon/Supabase) to your environment.",
+      "No Postgres connection string is configured. Set DATABASE_URL (or POSTGRES_PRISMA_URL/POSTGRES_URL when using Vercel Postgres).",
     );
   }
   const adapter = new PrismaPg({ connectionString });
@@ -21,14 +33,9 @@ function getClient(): PrismaClient {
   return globalForPrisma.prisma;
 }
 
-// A lazy proxy rather than a real client constructed at module scope: Next's
-// build-time page-data collection imports every route module (just to read
-// its config), which runs this file's top-level code without ever handling
-// a request. Constructing the real client there would require DATABASE_URL
-// to be readable at build time — which it isn't when it's a Vercel
-// "Sensitive" env var, only decrypted for the app at runtime. Deferring
-// construction to first actual use means importing this module is always
-// safe; only a real query needs the connection to exist.
+// Keep client creation lazy. Next.js imports route modules during build-time
+// page-data collection, while deployment secrets may only be available at
+// runtime. The first real database operation creates the client.
 export const db: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop, receiver) {
     return Reflect.get(getClient() as object, prop, receiver);
