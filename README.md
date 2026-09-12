@@ -50,9 +50,19 @@ dashboard.
    into) `DATABASE_URL`, since that's what Prisma reads.
 2. Add `ENCRYPTION_KEY` and `APP_URL` (your deployed domain) in Project →
    Settings → Environment Variables.
-3. Deploy. The build runs `npm run vercel-build`, which applies
-   `prisma migrate deploy` against your Postgres database automatically on
-   every deploy — no manual migration step needed.
+3. **Apply the schema to that database once, from your own machine**, with
+   `DATABASE_URL` pointed at it:
+   ```bash
+   DATABASE_URL="<paste the connection string>" npm run migrate:prod
+   ```
+   This is deliberately *not* run as part of the Vercel build. Vercel
+   env vars default to "Sensitive," which are only decrypted for the app at
+   runtime — the build container never sees them — so a build step that
+   needs `DATABASE_URL` (like `prisma migrate deploy`) fails with
+   `Connection url is empty` even though the variable is set correctly.
+   Run `npm run migrate:prod` again any time `prisma/schema.prisma` changes.
+4. Deploy (`npm run vercel-build` just generates the Prisma client and runs
+   `next build` — no database access needed at build time at all).
 
 ## Connecting real accounts
 
