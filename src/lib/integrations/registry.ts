@@ -13,7 +13,6 @@ export type OAuthProviderConfig = {
   /** Slack splits bot vs user scopes via a separate query param. */
   userScopeParam?: string;
   extraAuthorizeParams?: Record<string, string>;
-  /** Whether the token endpoint expects the client secret in the body (most do). */
 };
 
 export type CredentialProviderConfig = {
@@ -24,10 +23,16 @@ export type CredentialProviderConfig = {
   fields: { name: string; label: string; type: "text" | "password"; placeholder?: string }[];
 };
 
-export type ProviderConfig = OAuthProviderConfig | CredentialProviderConfig;
-
+/**
+ * OAuth must use one stable callback URI. APP_URL is the canonical public
+ * origin configured for the deployment; using the incoming request origin
+ * can produce a redirect_uri_mismatch when the user enters through a Vercel
+ * preview/custom alias that is not registered with Google.
+ */
 function appUrl() {
-  return process.env.APP_URL ?? "http://localhost:3000";
+  const value = process.env.APP_URL?.trim();
+  if (!value) return "http://localhost:3000";
+  return value.replace(/\/$/, "");
 }
 
 export function redirectUriFor(provider: string) {
@@ -108,6 +113,8 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     ],
   },
 };
+
+export type ProviderConfig = OAuthProviderConfig | CredentialProviderConfig;
 
 export function isOAuthProvider(config: ProviderConfig): config is OAuthProviderConfig {
   return config.authType === "oauth";
