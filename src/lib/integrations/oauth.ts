@@ -8,21 +8,24 @@ import {
 } from "./registry";
 import type { IntegrationProvider } from "@/generated/prisma/enums";
 
-export const OAUTH_STATE_COOKIE_PREFIX = "homehub_oauth_state_";
+export const OAUTH_STATE_COOKIE_PREFIX = "__Host-homehub_oauth_state_";
 
 export function generateState(): string {
   return randomBytes(16).toString("hex");
 }
 
-export function buildAuthorizeUrl(config: OAuthProviderConfig, state: string): string {
+export function buildAuthorizeUrl(
+  config: OAuthProviderConfig,
+  state: string,
+  redirectUri?: string,
+): string {
   const clientId = providerClientId(config);
   if (!clientId) {
     throw new Error(`${config.clientIdEnv} is not configured`);
   }
-  const redirectUri = redirectUriFor(config.id);
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: redirectUri ?? redirectUriFor(config.id),
     response_type: "code",
     state,
     ...config.extraAuthorizeParams,
@@ -46,19 +49,19 @@ export type ExchangedTokens = {
 export async function exchangeCodeForTokens(
   config: OAuthProviderConfig,
   code: string,
+  redirectUri?: string,
 ): Promise<ExchangedTokens> {
   const clientId = providerClientId(config);
   const clientSecret = providerClientSecret(config);
   if (!clientId || !clientSecret) {
     throw new Error(`${config.id} OAuth client is not configured`);
   }
-  const redirectUri = redirectUriFor(config.id);
 
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
     code,
-    redirect_uri: redirectUri,
+    redirect_uri: redirectUri ?? redirectUriFor(config.id),
     grant_type: "authorization_code",
   });
 
@@ -76,7 +79,6 @@ export async function exchangeCodeForTokens(
     throw new Error(`Token exchange failed for ${config.id}: ${JSON.stringify(json)}`);
   }
 
-  // Slack nests the user's token under authed_user when using user_scope.
   if (config.id === "slack") {
     const authedUser = json.authed_user as
       | { access_token?: string; refresh_token?: string; expires_in?: number }
