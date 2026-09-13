@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Switch } from "@/components/Switch";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 
 type TilePref = { tileType: string; enabled: boolean };
@@ -176,28 +177,32 @@ export default function SettingsPage() {
         <h2 className="relative z-10 text-sm font-semibold" style={{ color: "var(--ink)" }}>
           Dashboard tiles
         </h2>
-        <div className="relative z-10 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="relative z-10 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {(tiles ?? []).map((tile) => {
             const meta = TILE_META[tile.tileType];
             if (!meta) return null;
             return (
-              <motion.button
+              <motion.div
                 key={tile.tileType}
-                onClick={() => toggleTile(tile.tileType)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                animate={{ opacity: tile.enabled ? 1 : 0.5 }}
-                className="flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm"
+                animate={{ opacity: tile.enabled ? 1 : 0.6 }}
+                className="flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm"
                 style={{ background: "var(--glass-fill-strong)", color: "var(--ink)" }}
               >
-                <motion.span
-                  animate={{ rotate: tile.enabled ? 0 : -20, scale: tile.enabled ? 1 : 0.9 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 16 }}
-                >
-                  <Icon name={meta.icon} className="h-4 w-4" style={{ color: "var(--accent)" }} />
-                </motion.span>
-                {meta.label}
-              </motion.button>
+                <span className="flex items-center gap-2">
+                  <motion.span
+                    animate={{ rotate: tile.enabled ? 0 : -20, scale: tile.enabled ? 1 : 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 16 }}
+                  >
+                    <Icon name={meta.icon} className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                  </motion.span>
+                  {meta.label}
+                </span>
+                <Switch
+                  checked={tile.enabled}
+                  onChange={() => toggleTile(tile.tileType)}
+                  label={`Show ${meta.label} on dashboard`}
+                />
+              </motion.div>
             );
           })}
         </div>

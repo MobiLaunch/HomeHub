@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
+import { useReportActivity } from "@/hooks/useTileActivity";
 import type { SpotifyNowPlaying, SpotifyTrack } from "@/lib/integrations/live";
 
 function formatDuration(ms: number) {
@@ -18,6 +19,12 @@ export function SpotifyWidget() {
   const { data, isLoading } = useLive<{ nowPlaying: SpotifyNowPlaying[] }>("/api/live/spotify", 20_000);
   const [expanded, setExpanded] = useState(false);
   const current = data?.nowPlaying?.[0];
+  const isPlayingNow = Boolean(current?.isPlaying);
+
+  // Actively playing music is the whole point of this tile being on the
+  // dashboard at all — worth surfacing bigger and higher than a tile that's
+  // just sitting on a track someone finished listening to an hour ago.
+  useReportActivity("spotify", isPlayingNow ? 100 : 0, isPlayingNow);
 
   if (isLoading && !current) {
     return <EmptyState text="Checking Spotify…" />;

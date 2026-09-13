@@ -11,6 +11,8 @@ import { NotesTile } from "@/components/dashboard/NotesTile";
 import { StickerBoard } from "@/components/dashboard/StickerBoard";
 import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
 import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
+import { DashboardFab } from "@/components/dashboard/DashboardFab";
+import { TileActivityProvider, useTileActivitySnapshot } from "@/hooks/useTileActivity";
 
 type TilePref = { tileType: string; enabled: boolean; position: number; size: "sm" | "md" | "lg" };
 
@@ -29,8 +31,17 @@ const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; rend
 };
 
 export default function DashboardPage() {
+  return (
+    <TileActivityProvider>
+      <DashboardContent />
+    </TileActivityProvider>
+  );
+}
+
+function DashboardContent() {
   const [householdName, setHouseholdName] = useState("Home");
   const [tiles, setTiles] = useState<TilePref[] | null>(null);
+  const activity = useTileActivitySnapshot();
 
   useEffect(() => {
     fetch("/api/household").then((r) => r.json()).then((json) => setHouseholdName(json.household?.name ?? "Home"));
@@ -39,13 +50,29 @@ export default function DashboardPage() {
 
   const visibleTiles = (tiles ?? []).filter((t) => t.enabled && TILE_REGISTRY[t.tileType]).sort((a, b) => a.position - b.position);
   const calendar = visibleTiles.find((t) => t.tileType === "calendar");
-  const secondary = visibleTiles.filter((t) => t.tileType !== "calendar");
+
+  // Tiles reorder and grow live: whichever secondary tile currently has the
+  // highest reported activity score (Spotify playing, fresh messages, a
+  // fuller live-activity stack) moves to the front and, if it asked for it,
+  // temporarily renders at "lg" — all animated via each Tile's own
+  // framer-motion `layout` prop, so this reflow just falls out of re-sorting
+  // the array on every activity update.
+  const secondary = visibleTiles
+    .filter((t) => t.tileType !== "calendar")
+    .map((t) => ({ ...t, ...(activity[t.tileType] ?? { score: 0, boostSize: false }) }))
+    .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.position - b.position));
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       <GreetingHeader householdName={householdName} />
       {calendar && (
-        <Tile title={TILE_REGISTRY.calendar.title} icon={TILE_REGISTRY.calendar.icon} size="lg" index={0}>
+        <Tile
+          title={TILE_REGISTRY.calendar.title}
+          icon={TILE_REGISTRY.calendar.icon}
+          size="lg"
+          index={0}
+          active={(activity.calendar?.score ?? 0) > 0}
+        >
           <CalendarTile />
         </Tile>
       )}
@@ -53,10 +80,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {secondary.map((tile, index) => {
             const meta = TILE_REGISTRY[tile.tileType];
-            return <Tile key={tile.tileType} title={meta.title} icon={meta.icon} size={tile.size} index={index + 1}>{meta.render()}</Tile>;
+            return (
+              <Tile
+                key={tile.tileType}
+                title={meta.title}
+                icon={meta.icon}
+                size={tile.boostSize ? "lg" : tile.size}
+                index={index + 1}
+                active={tile.boostSize}
+              >
+                {meta.render()}
+              </Tile>
+            );
           })}
         </div>
       )}
+      <DashboardFab />
     </main>
   );
 }

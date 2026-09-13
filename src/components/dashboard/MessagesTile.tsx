@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
+import { useReportActivity } from "@/hooks/useTileActivity";
 import type { LiveMessage } from "@/lib/integrations/live";
 
 function timeAgo(iso: string) {
@@ -18,6 +19,13 @@ function timeAgo(iso: string) {
 export function MessagesTile() {
   const { data, isLoading } = useLive<{ messages: LiveMessage[] }>("/api/live/messages", 30_000);
   const messages = data?.messages ?? [];
+
+  // Wall-clock recency check, not derived render state — it's expected to
+  // read differently on each poll/re-render as messages age, same as
+  // timeAgo() below.
+  // eslint-disable-next-line react-hooks/purity
+  const recentCount = messages.filter((m) => Date.now() - new Date(m.timestamp).getTime() < 10 * 60_000).length;
+  useReportActivity("messages", recentCount * 20, recentCount >= 2);
 
   if (isLoading && messages.length === 0) {
     return <EmptyState text="Checking Slack & Teams…" />;

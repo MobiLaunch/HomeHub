@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
+import { useSnackbar } from "@/hooks/useSnackbar";
 import { mutate } from "swr";
 
 type Note = { id: string; text: string; color: string };
@@ -14,6 +15,7 @@ export function NotesTile() {
   const { data } = useLive<{ notes: Note[] }>("/api/notes", 15_000);
   const notes = data?.notes ?? [];
   const [draft, setDraft] = useState("");
+  const showSnackbar = useSnackbar();
 
   async function addNote() {
     if (!draft.trim()) return;
@@ -27,15 +29,26 @@ export function NotesTile() {
     mutate("/api/notes");
   }
 
-  async function removeNote(id: string) {
+  async function removeNote(note: Note) {
     mutate(
       "/api/notes",
       (current: { notes: Note[] } | undefined) =>
-        current && { notes: current.notes.filter((n) => n.id !== id) },
+        current && { notes: current.notes.filter((n) => n.id !== note.id) },
       { revalidate: false },
     );
-    await fetch(`/api/notes/${id}`, { method: "DELETE" });
+    await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
     mutate("/api/notes");
+    showSnackbar("Note deleted", {
+      label: "Undo",
+      onClick: async () => {
+        await fetch("/api/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: note.text, color: note.color }),
+        });
+        mutate("/api/notes");
+      },
+    });
   }
 
   return (
@@ -75,7 +88,7 @@ export function NotesTile() {
             >
               <p className="pr-4 leading-snug break-words">{note.text}</p>
               <button
-                onClick={() => removeNote(note.id)}
+                onClick={() => removeNote(note)}
                 className="absolute right-1.5 top-1.5 rounded-full p-1 opacity-0 transition group-hover:opacity-70 hover:!opacity-100"
                 aria-label="Delete note"
               >

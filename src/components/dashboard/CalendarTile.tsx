@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
+import { useReportActivity } from "@/hooks/useTileActivity";
 import type { CalendarEvent } from "@/lib/integrations/live";
 
 const SOURCE_META = {
@@ -38,6 +39,15 @@ export function CalendarTile() {
     return groups;
   }, {});
   const days = Object.entries(grouped);
+
+  // Calendar is always the pinned hero tile regardless of score (it never
+  // competes for a grid slot), but an imminent event still earns it the
+  // "starting soon" badge — worth knowing even though its size never changes.
+  // Wall-clock recency check, not derived render state — expected to read
+  // differently on each poll/re-render as the next event approaches.
+  // eslint-disable-next-line react-hooks/purity
+  const minutesToNext = events.length > 0 ? (new Date(events[0].start).getTime() - Date.now()) / 60_000 : Infinity;
+  useReportActivity("calendar", minutesToNext <= 30 && minutesToNext >= -5 ? 80 : 0, false);
 
   if (isLoading && events.length === 0) return <EmptyState text="Loading your calendars…" />;
   if (events.length === 0) return <EmptyState text="No upcoming events. Connect Google or Apple Calendar in Settings." />;

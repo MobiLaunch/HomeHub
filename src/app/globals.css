@@ -64,6 +64,13 @@
      primary tint) rather than a specular glass highlight. */
   --glow-color: rgba(11, 87, 208, 0.1);
 
+  /* Inverse roles — deliberately opposite of the current theme, used for
+     surfaces (like a snackbar) that should read consistently regardless of
+     light/dark mode. */
+  --m3-inverse-surface: #2f3033;
+  --m3-inverse-on-surface: #f1f0f4;
+  --m3-inverse-primary: #a8c7fa;
+
   --shape-sm: 12px;
   --shape-md: 16px;
   --shape-lg: 20px;
@@ -107,6 +114,10 @@
     --m3-outline: #8e9099;
     --m3-outline-variant: #44474e;
 
+    --m3-inverse-surface: #e2e2e9;
+    --m3-inverse-on-surface: #1a1c1e;
+    --m3-inverse-primary: #0b57d0;
+
     --glow-color: rgba(168, 199, 250, 0.14);
   }
 }
@@ -142,6 +153,10 @@
   --m3-on-surface-variant: #c4c6d0;
   --m3-outline: #8e9099;
   --m3-outline-variant: #44474e;
+
+  --m3-inverse-surface: #e2e2e9;
+  --m3-inverse-on-surface: #1a1c1e;
+  --m3-inverse-primary: #0b57d0;
 
   --glow-color: rgba(168, 199, 250, 0.14);
 }
@@ -333,6 +348,35 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* M3 state-layer ripple host + the expanding circle itself (see useRipple). */
+.ripple-surface {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-circle {
+  position: absolute;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.22;
+  transform: scale(0);
+  animation: ripple-expand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple-expand {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ripple-circle {
+    display: none;
+  }
 }
 
 /* Spinning vinyl record overlay for the Spotify widget's album art. */

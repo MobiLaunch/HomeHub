@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
+import { useReportActivity } from "@/hooks/useTileActivity";
 import type { CalendarEvent, LiveMessage, FacebookActivityItem } from "@/lib/integrations/live";
 
 type ActivityItem =
@@ -59,6 +60,11 @@ export function LiveActivityStack() {
           : { kind: "fb_message", id: a.id, author: a.authorName, text: a.text },
     ),
   ];
+
+  // More waiting activity items is more reason for this tile to stand out —
+  // capped so a handful of connected accounts doesn't just permanently pin
+  // it in first place forever.
+  useReportActivity("notifications", Math.min(items.length * 12, 60), items.length >= 3);
 
   if (items.length === 0) {
     return (

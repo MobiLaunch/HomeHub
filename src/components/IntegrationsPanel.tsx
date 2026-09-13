@@ -5,6 +5,8 @@ import { mutate } from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLive } from "@/hooks/useLive";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
+import { useRipple } from "@/hooks/useRipple";
+import { useSnackbar } from "@/hooks/useSnackbar";
 import { Icon } from "@/components/Icon";
 
 type ProviderAccount = {
@@ -38,14 +40,16 @@ const INTEGRATIONS_URL = "/api/integrations";
 export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings" }) {
   const { data, error, isLoading } = useLive<{ providers: ProviderInfo[] }>(INTEGRATIONS_URL, 60_000);
   const providers = data?.providers ?? null;
+  const showSnackbar = useSnackbar();
 
-  async function disconnect(providerId: string, accountId: string) {
+  async function disconnect(providerId: string, accountId: string, label: string) {
     await fetch(`/api/integrations/${providerId}/disconnect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: accountId }),
     });
     mutate(INTEGRATIONS_URL);
+    showSnackbar(`Disconnected ${label}`);
   }
 
   if (error) {
@@ -82,7 +86,7 @@ export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings"
           provider={provider}
           index={index}
           returnTo={returnTo}
-          onDisconnect={(accountId) => disconnect(provider.id, accountId)}
+          onDisconnect={(accountId, label) => disconnect(provider.id, accountId, label)}
         />
       ))}
     </div>
@@ -98,10 +102,12 @@ function ProviderCard({
   provider: ProviderInfo;
   index: number;
   returnTo: "setup" | "settings";
-  onDisconnect: (accountId: string) => void;
+  onDisconnect: (accountId: string, label: string) => void;
 }) {
   const providerIcon = ICONS[provider.id];
   const { ref: glowRef, onPointerMove: glowMove, onPointerLeave: glowLeave } = usePointerGlow<HTMLDivElement>();
+  const { onPointerDown: connectRippleDown, rippleLayer: connectRipple } = useRipple<HTMLAnchorElement>();
+  const { onPointerDown: appleRippleDown, rippleLayer: appleRipple } = useRipple<HTMLButtonElement>();
   const [appleForm, setAppleForm] = useState({ appleId: "", appPassword: "" });
   const [appleBusy, setAppleBusy] = useState(false);
   const [appleError, setAppleError] = useState<string | null>(null);
@@ -160,30 +166,7 @@ function ProviderCard({
         <ul className="relative z-10 flex flex-col gap-1.5">
           <AnimatePresence initial={false}>
             {provider.accounts.map((account) => (
-              <motion.li
-                key={account.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25 }}
-                className="flex items-center justify-between gap-2 overflow-hidden rounded-xl px-3 py-2 text-sm"
-                style={{ background: "var(--glass-fill-strong)" }}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <StatusDot status={account.status} />
-                  <span className="truncate" style={{ color: "var(--ink)" }}>
-                    {account.label}
-                  </span>
-                </span>
-                <button
-                  onClick={() => onDisconnect(account.id)}
-                  className="flex shrink-0 items-center gap-1 text-xs opacity-70 transition-colors hover:text-rose-500 hover:opacity-100"
-                  style={{ color: "var(--ink-soft)" }}
-                >
-                  <Icon name="link_off" className="h-3.5 w-3.5" />
-                  Disconnect
-                </button>
-              </motion.li>
+              <AccountRow key={account.id} account={account} onDisconnect={() => onDisconnect(account.id, account.label)} />
             ))}
           </AnimatePresence>
         </ul>
@@ -199,10 +182,12 @@ function ProviderCard({
       {provider.authType === "oauth" && provider.configured && (
         <motion.a
           href={`/api/integrations/${provider.id}/connect?from=${returnTo}`}
+          onPointerDown={connectRippleDown}
           whileTap={{ scale: 0.96 }}
-          className="glass-pill relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium"
+          className="ripple-surface glass-pill relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium"
           style={{ color: "var(--accent)" }}
         >
+          {connectRipple}
           <Icon name="link" className="h-4 w-4" />
           Connect {provider.displayName}
         </motion.a>
@@ -236,16 +221,50 @@ function ProviderCard({
           <motion.button
             type="submit"
             disabled={appleBusy}
+            onPointerDown={appleRippleDown}
             whileTap={{ scale: 0.96 }}
-            className="glass-pill flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className="ripple-surface glass-pill flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
             style={{ color: "var(--accent)" }}
           >
+            {appleRipple}
             {appleBusy ? <Icon name="progress_activity" className="h-4 w-4 animate-spin" /> : <Icon name="link" className="h-4 w-4" />}
             Connect Apple Calendar
           </motion.button>
         </form>
       )}
     </motion.div>
+  );
+}
+
+function AccountRow({ account, onDisconnect }: { account: ProviderAccount; onDisconnect: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.25 }}
+      className="flex items-center justify-between gap-2 overflow-hidden rounded-xl px-3 py-2 text-sm"
+      style={{ background: "var(--glass-fill-strong)" }}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <StatusDot status={account.status} />
+        <span className="truncate" style={{ color: "var(--ink)" }}>
+          {account.label}
+        </span>
+      </span>
+      <button
+        onClick={onDisconnect}
+        onPointerDown={onPointerDown}
+        className="ripple-surface flex shrink-0 items-center gap-1 rounded-lg px-1.5 py-1 text-xs opacity-70 transition-colors hover:text-rose-500 hover:opacity-100"
+        style={{ color: "var(--ink-soft)" }}
+      >
+        {rippleLayer}
+        <Icon name="link_off" className="h-3.5 w-3.5" />
+        Disconnect
+      </button>
+    </motion.li>
   );
 }
 
