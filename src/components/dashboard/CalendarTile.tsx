@@ -1,97 +1,222 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { mutate } from "swr";
+import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
+import { useSnackbar } from "@/hooks/useSnackbar";
+import { useRipple } from "@/hooks/useRipple";
 import type { CalendarEvent } from "@/lib/integrations/live";
+import { AgendaView } from "./calendar/AgendaView";
+import { WeekView } from "./calendar/WeekView";
+import { MonthView } from "./calendar/MonthView";
+import { YearView } from "./calendar/YearView";
+import { NewEventForm } from "./calendar/NewEventForm";
+import { EventDetailSheet } from "./calendar/EventDetail";
+import { addDays, addMonths, addYears } from "./calendar/dateUtils";
 
-const SOURCE_META = {
-  google: { label: "Google", mark: "G" },
-  microsoft: { label: "Microsoft", mark: "M" },
-  apple: { label: "Apple", mark: "" },
-  facebook: { label: "Facebook", mark: "f" },
-} as const;
-
-function dayKey(value: string) {
-  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
-}
-function dayLabel(value: string) {
-  const date = new Date(value);
-  const today = new Date();
-  if (date.toDateString() === today.toDateString()) return "Today";
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
-  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-}
-function timeLabel(event: CalendarEvent) {
-  if (event.allDay) return "All day";
-  return new Date(event.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
+type ViewMode = "agenda" | "week" | "month" | "year";
+const CALENDAR_URL = "/api/live/calendar";
+const VIEWS: { value: ViewMode; label: string }[] = [
+  { value: "agenda", label: "Agenda" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+];
 
 export function CalendarTile() {
-  const { data, isLoading } = useLive<{ events: CalendarEvent[] }>("/api/live/calendar", 60_000);
-  const events = (data?.events ?? []).slice(0, 30);
-  const grouped = events.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
-    const key = dayKey(event.start);
-    (groups[key] ??= []).push(event);
-    return groups;
-  }, {});
-  const days = Object.entries(grouped);
+  const { data, isLoading } = useLive<{ events: CalendarEvent[] }>(CALENDAR_URL, 60_000);
+  const events = data?.events ?? [];
+  const [view, setView] = useState<ViewMode>("agenda");
+  const [anchor, setAnchor] = useState(() => new Date());
+  const [showNewEvent, setShowNewEvent] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const showSnackbar = useSnackbar();
 
-  // Calendar is always the pinned hero tile regardless of score (it never
-  // competes for a grid slot), but an imminent event still earns it the
-  // "starting soon" badge — worth knowing even though its size never changes.
   // Wall-clock recency check, not derived render state — expected to read
-  // differently on each poll/re-render as the next event approaches.
+  // differently on each poll/re-render as events pass.
   // eslint-disable-next-line react-hooks/purity
-  const minutesToNext = events.length > 0 ? (new Date(events[0].start).getTime() - Date.now()) / 60_000 : Infinity;
+  const now = Date.now();
+  const upcoming = events
+    .filter((e) => new Date(e.end ?? e.start).getTime() >= now)
+    .sort((a, b) => a.start.localeCompare(b.start));
+  const minutesToNext = upcoming.length > 0 ? (new Date(upcoming[0].start).getTime() - now) / 60_000 : Infinity;
   useReportActivity("calendar", minutesToNext <= 30 && minutesToNext >= -5 ? 80 : 0, false);
 
-  if (isLoading && events.length === 0) return <EmptyState text="Loading your calendars…" />;
-  if (events.length === 0) return <EmptyState text="No upcoming events. Connect Google or Apple Calendar in Settings." />;
+  function navigate(direction: -1 | 1) {
+    setAnchor((prev) => {
+      if (view === "week") return addDays(prev, direction * 7);
+      if (view === "month") return addMonths(prev, direction);
+      if (view === "year") return addYears(prev, direction);
+      return prev;
+    });
+  }
+
+  async function handleDelete(event: CalendarEvent) {
+    setSelectedEvent(null);
+    mutate(
+      CALENDAR_URL,
+      (current: { events: CalendarEvent[] } | undefined) =>
+        current && { events: current.events.filter((e) => e.id !== event.id) },
+      { revalidate: false },
+    );
+    await fetch(CALENDAR_URL, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ integrationId: event.integrationId, source: event.source, nativeId: event.nativeId }),
+    });
+    mutate(CALENDAR_URL);
+    showSnackbar(`Deleted "${event.title}"`);
+  }
+
+  if (isLoading && events.length === 0) {
+    return (
+      <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
+        <Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} />
+        <p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>
+          Loading your calendars…
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2" aria-label="Calendar sources">
-        {Object.entries(SOURCE_META).map(([source, meta]) => {
-          const count = events.filter((event) => event.source === source).length;
-          if (!count) return null;
-          return <span key={source} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}><span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]" style={{ background: "var(--glass-fill)", color: "var(--ink)" }}>{meta.mark}</span>{meta.label} · {count}</span>;
-        })}
-        <span className="ml-auto text-xs" style={{ color: "var(--ink-soft)" }}>{events.length} upcoming</span>
-      </div>
-
-      <div className="max-h-[52vh] overflow-y-auto pr-1 sm:max-h-[560px]">
-        <div className="space-y-5">
-          <AnimatePresence initial={false}>
-            {days.map(([key, dayEvents], dayIndex) => (
-              <motion.section key={key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: dayIndex * 0.03 }}>
-                <div className="sticky top-0 z-10 mb-2 flex items-center gap-3 py-1" style={{ background: "var(--glass-fill)" }}>
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{dayLabel(dayEvents[0].start)}</h3>
-                  <span className="h-px flex-1" style={{ background: "var(--glass-border)" }} />
-                  <span className="text-xs" style={{ color: "var(--ink-soft)" }}>{dayEvents.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {dayEvents.map((event) => (
-                    <motion.article key={event.id} layout whileHover={{ x: 2 }} className="group grid grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 sm:grid-cols-[5.5rem_1fr]" style={{ background: "var(--glass-fill-strong)" }}>
-                      <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
-                      <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
-                        <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
-                      </div>
-                    </motion.article>
-                  ))}
-                </div>
-              </motion.section>
-            ))}
-          </AnimatePresence>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <ViewSwitcher value={view} onChange={setView} />
+        <div className="ml-auto flex items-center gap-1.5">
+          {view !== "agenda" && (
+            <>
+              <NavButton icon="chevron_left" label="Previous" onClick={() => navigate(-1)} />
+              <button
+                onClick={() => setAnchor(new Date())}
+                className="glass-pill px-3 py-1.5 text-xs font-medium"
+                style={{ color: "var(--accent)" }}
+              >
+                Today
+              </button>
+              <NavButton icon="chevron_right" label="Next" onClick={() => navigate(1)} />
+            </>
+          )}
+          <NewEventButton onClick={() => setShowNewEvent(true)} />
         </div>
       </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {view === "agenda" && <AgendaView events={events} onSelect={setSelectedEvent} />}
+          {view === "week" && <WeekView events={events} anchor={anchor} onSelect={setSelectedEvent} />}
+          {view === "month" && (
+            <MonthView
+              events={events}
+              anchor={anchor}
+              onDayClick={(day) => {
+                setAnchor(day);
+                setView("week");
+              }}
+            />
+          )}
+          {view === "year" && (
+            <YearView
+              events={events}
+              anchor={anchor}
+              onMonthClick={(monthAnchor) => {
+                setAnchor(monthAnchor);
+                setView("month");
+              }}
+              onDayClick={(day) => {
+                setAnchor(day);
+                setView("week");
+              }}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNewEvent && <NewEventForm onClose={() => setShowNewEvent(false)} defaultDate={anchor} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedEvent && (
+          <EventDetailSheet
+            event={selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+            onDelete={() => handleDelete(selectedEvent)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function EmptyState({ text }: { text: string }) {
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-56 flex-col items-center justify-center gap-3 text-center"><Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} /><p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>{text}</p></motion.div>;
+function ViewSwitcher({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  return (
+    <div className="glass-pill relative inline-flex p-1">
+      {VIEWS.map((v) => (
+        <ViewSegment key={v.value} active={value === v.value} label={v.label} onSelect={() => onChange(v.value)} />
+      ))}
+    </div>
+  );
+}
+
+function ViewSegment({ active, label, onSelect }: { active: boolean; label: string; onSelect: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  return (
+    <button
+      onClick={onSelect}
+      onPointerDown={onPointerDown}
+      className="ripple-surface relative rounded-full px-3 py-1.5 text-xs font-medium"
+      style={{ color: active ? "var(--on-accent)" : "var(--ink-soft)" }}
+    >
+      {active && (
+        <motion.span
+          layoutId="calendar-view-active"
+          transition={{ type: "spring", stiffness: 500, damping: 32 }}
+          className="absolute inset-0 rounded-full"
+          style={{ background: "var(--accent)" }}
+        />
+      )}
+      {rippleLayer}
+      <span className="relative">{label}</span>
+    </button>
+  );
+}
+
+function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  return (
+    <button
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      aria-label={label}
+      className="ripple-surface glass-pill flex h-8 w-8 items-center justify-center"
+    >
+      {rippleLayer}
+      <Icon name={icon} className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
+    </button>
+  );
+}
+
+function NewEventButton({ onClick }: { onClick: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  return (
+    <motion.button
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      whileTap={{ scale: 0.94 }}
+      aria-label="New event"
+      className="ripple-surface glass-pill flex h-8 w-8 items-center justify-center"
+    >
+      {rippleLayer}
+      <Icon name="add" className="h-4 w-4" style={{ color: "var(--accent)" }} />
+    </motion.button>
+  );
 }

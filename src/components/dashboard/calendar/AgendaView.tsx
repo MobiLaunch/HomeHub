@@ -1,0 +1,97 @@
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "@/components/Icon";
+import type { CalendarEvent } from "@/lib/integrations/live";
+
+const SOURCE_META: Record<CalendarEvent["source"], { label: string; mark: string }> = {
+  google: { label: "Google", mark: "G" },
+  microsoft: { label: "Microsoft", mark: "M" },
+  apple: { label: "Apple", mark: "" },
+};
+
+function dayKey(value: string) {
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
+}
+function dayLabel(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "Today";
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+function timeLabel(event: CalendarEvent) {
+  if (event.allDay) return "All day";
+  return new Date(event.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+export function AgendaView({
+  events,
+  onSelect,
+}: {
+  events: CalendarEvent[];
+  onSelect: (event: CalendarEvent) => void;
+}) {
+  // Wall-clock recency check, not derived render state — expected to read
+  // differently on each poll/re-render as events pass.
+  // eslint-disable-next-line react-hooks/purity
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const upcoming = events.filter((e) => new Date(e.end ?? e.start).getTime() >= cutoff).slice(0, 30);
+
+  if (upcoming.length === 0) {
+    return (
+      <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
+        <Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} />
+        <p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>
+          No upcoming events. Connect Google or Apple Calendar in Settings, or add one with the button above.
+        </p>
+      </div>
+    );
+  }
+
+  const grouped = upcoming.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
+    const key = dayKey(event.start);
+    (groups[key] ??= []).push(event);
+    return groups;
+  }, {});
+  const days = Object.entries(grouped);
+
+  return (
+    <div className="max-h-[52vh] overflow-y-auto pr-1 sm:max-h-[560px]">
+      <div className="space-y-5">
+        <AnimatePresence initial={false}>
+          {days.map(([key, dayEvents], dayIndex) => (
+            <motion.section key={key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: dayIndex * 0.03 }}>
+              <div className="sticky top-0 z-10 mb-2 flex items-center gap-3 py-1" style={{ background: "var(--glass-fill)" }}>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{dayLabel(dayEvents[0].start)}</h3>
+                <span className="h-px flex-1" style={{ background: "var(--glass-border)" }} />
+                <span className="text-xs" style={{ color: "var(--ink-soft)" }}>{dayEvents.length}</span>
+              </div>
+              <div className="space-y-2">
+                {dayEvents.map((event) => (
+                  <motion.button
+                    key={event.id}
+                    layout
+                    onClick={() => onSelect(event)}
+                    whileHover={{ x: 2 }}
+                    className="group grid w-full grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 text-left sm:grid-cols-[5.5rem_1fr]"
+                    style={{ background: "var(--glass-fill-strong)" }}
+                  >
+                    <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
+                    <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
+                      <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.section>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+export { SOURCE_META };

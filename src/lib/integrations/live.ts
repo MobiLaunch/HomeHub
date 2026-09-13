@@ -5,6 +5,11 @@ import { DAVClient } from "tsdav";
 
 export type CalendarEvent = {
   id: string;
+  /** Provider-native event id (CalDAV: the calendar object's URL) — what
+   * create/delete calls need, distinct from `id`'s `source:nativeId` key. */
+  nativeId: string;
+  /** Our Integration row id — which stored token/credentials to act with. */
+  integrationId: string;
   title: string;
   start: string; // ISO
   end: string | null;
@@ -12,6 +17,14 @@ export type CalendarEvent = {
   location: string | null;
   source: "google" | "microsoft" | "apple";
   accountLabel: string;
+};
+
+export type NewCalendarEventInput = {
+  title: string;
+  start: string; // ISO
+  end: string; // ISO
+  allDay: boolean;
+  location?: string;
 };
 
 export type LiveMessage = {
@@ -64,6 +77,13 @@ export type SpotifyNowPlaying = {
   accountLabel: string;
 };
 
+// Week/Month/Year calendar views need a much wider window than a plain
+// upcoming-agenda list — wide enough to cover a full Year view (with some
+// past-days context for the current month) in one fetch, so switching views
+// is pure client-side filtering rather than a refetch per range.
+const CALENDAR_WINDOW_PAST_DAYS = 30;
+const CALENDAR_WINDOW_FUTURE_DAYS = 400;
+
 async function markSynced(integrationId: string, error?: string) {
   await db.integration.update({
     where: { id: integrationId },
@@ -91,14 +111,14 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
           if (!token) return [];
           const events = await fetchGoogleCalendarEvents(token);
           await markSynced(integration.id);
-          return events.map((e) => ({ ...e, accountLabel: integration.label }));
+          return events.map((e) => ({ ...e, accountLabel: integration.label, integrationId: integration.id }));
         }
         if (integration.provider === "microsoft") {
           const token = await getValidAccessToken(integration);
           if (!token) return [];
           const events = await fetchMicrosoftCalendarEvents(token);
           await markSynced(integration.id);
-          return events.map((e) => ({ ...e, accountLabel: integration.label }));
+          return events.map((e) => ({ ...e, accountLabel: integration.label, integrationId: integration.id }));
         }
         if (integration.provider === "apple") {
           if (!integration.credentialUsername || !integration.credentialSecretEnc) return [];
@@ -108,7 +128,7 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
             password,
           );
           await markSynced(integration.id);
-          return events.map((e) => ({ ...e, accountLabel: integration.label }));
+          return events.map((e) => ({ ...e, accountLabel: integration.label, integrationId: integration.id }));
         }
         return [];
       } catch (err) {
@@ -119,6 +139,64 @@ export async function fetchCalendarEvents(): Promise<CalendarEvent[]> {
   );
 
   return results.flat().sort((a, b) => a.start.localeCompare(b.start));
+}
+
+export async function createCalendarEvent(
+  integrationId: string,
+  input: NewCalendarEventInput,
+): Promise<CalendarEvent> {
+  const integration = await db.integration.findUniqueOrThrow({ where: { id: integrationId } });
+
+  if (integration.provider === "google") {
+    const token = await getValidAccessToken(integration);
+    if (!token) throw new Error("Google Calendar needs to be reconnected in Settings");
+    const event = await createGoogleCalendarEvent(token, input);
+    return { ...event, accountLabel: integration.label, integrationId };
+  }
+  if (integration.provider === "microsoft") {
+    const token = await getValidAccessToken(integration);
+    if (!token) throw new Error("Microsoft 365 needs to be reconnected in Settings");
+    const event = await createMicrosoftCalendarEvent(token, input);
+    return { ...event, accountLabel: integration.label, integrationId };
+  }
+  if (integration.provider === "apple") {
+    if (!integration.credentialUsername || !integration.credentialSecretEnc) {
+      throw new Error("Apple Calendar is not fully connected");
+    }
+    const password = decryptSecret(integration.credentialSecretEnc);
+    const event = await createAppleCalendarEvent(integration.credentialUsername, password, input);
+    return { ...event, accountLabel: integration.label, integrationId };
+  }
+  throw new Error(`${integration.provider} does not support creating events`);
+}
+
+export async function deleteCalendarEvent(
+  integrationId: string,
+  source: CalendarEvent["source"],
+  nativeId: string,
+): Promise<void> {
+  const integration = await db.integration.findUniqueOrThrow({ where: { id: integrationId } });
+
+  if (source === "google") {
+    const token = await getValidAccessToken(integration);
+    if (!token) throw new Error("Google Calendar needs to be reconnected in Settings");
+    await deleteGoogleCalendarEvent(token, nativeId);
+    return;
+  }
+  if (source === "microsoft") {
+    const token = await getValidAccessToken(integration);
+    if (!token) throw new Error("Microsoft 365 needs to be reconnected in Settings");
+    await deleteMicrosoftCalendarEvent(token, nativeId);
+    return;
+  }
+  if (source === "apple") {
+    if (!integration.credentialUsername || !integration.credentialSecretEnc) {
+      throw new Error("Apple Calendar is not fully connected");
+    }
+    const password = decryptSecret(integration.credentialSecretEnc);
+    await deleteAppleCalendarEvent(integration.credentialUsername, password, nativeId);
+    return;
+  }
 }
 
 export async function fetchLiveMessages(): Promise<LiveMessage[]> {
@@ -238,15 +316,15 @@ export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying[]> {
 
 async function fetchGoogleCalendarEvents(
   accessToken: string,
-): Promise<Omit<CalendarEvent, "accountLabel">[]> {
-  const timeMin = new Date().toISOString();
-  const timeMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">[]> {
+  const timeMin = new Date(Date.now() - CALENDAR_WINDOW_PAST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(Date.now() + CALENDAR_WINDOW_FUTURE_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
   url.searchParams.set("timeMin", timeMin);
   url.searchParams.set("timeMax", timeMax);
   url.searchParams.set("singleEvents", "true");
   url.searchParams.set("orderBy", "startTime");
-  url.searchParams.set("maxResults", "20");
+  url.searchParams.set("maxResults", "250");
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) throw new Error(`Google Calendar API error: ${res.status}`);
@@ -261,6 +339,7 @@ async function fetchGoogleCalendarEvents(
   };
   return ((json.items ?? []) as GoogleEvent[]).map((e) => ({
     id: `google:${e.id}`,
+    nativeId: e.id,
     title: e.summary ?? "(no title)",
     start: e.start.dateTime ?? e.start.date ?? timeMin,
     end: e.end?.dateTime ?? e.end?.date ?? null,
@@ -270,20 +349,63 @@ async function fetchGoogleCalendarEvents(
   }));
 }
 
+async function createGoogleCalendarEvent(
+  accessToken: string,
+  input: NewCalendarEventInput,
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">> {
+  const body: Record<string, unknown> = { summary: input.title, location: input.location || undefined };
+  if (input.allDay) {
+    body.start = { date: input.start.slice(0, 10) };
+    body.end = { date: input.end.slice(0, 10) };
+  } else {
+    body.start = { dateTime: input.start };
+    body.end = { dateTime: input.end };
+  }
+
+  const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Google Calendar create error: ${res.status}`);
+  const e = await res.json();
+  return {
+    id: `google:${e.id}`,
+    nativeId: e.id,
+    title: e.summary ?? input.title,
+    start: e.start?.dateTime ?? e.start?.date ?? input.start,
+    end: e.end?.dateTime ?? e.end?.date ?? input.end,
+    allDay: input.allDay,
+    location: e.location ?? null,
+    source: "google" as const,
+  };
+}
+
+async function deleteGoogleCalendarEvent(accessToken: string, nativeId: string): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(nativeId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  // 410 Gone / 404 both mean "already not there" — fine for a delete.
+  if (!res.ok && res.status !== 410 && res.status !== 404) {
+    throw new Error(`Google Calendar delete error: ${res.status}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Microsoft Graph — Calendar + Teams chat
 // ---------------------------------------------------------------------------
 
 async function fetchMicrosoftCalendarEvents(
   accessToken: string,
-): Promise<Omit<CalendarEvent, "accountLabel">[]> {
-  const start = new Date().toISOString();
-  const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">[]> {
+  const start = new Date(Date.now() - CALENDAR_WINDOW_PAST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const end = new Date(Date.now() + CALENDAR_WINDOW_FUTURE_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const url = new URL("https://graph.microsoft.com/v1.0/me/calendarview");
   url.searchParams.set("startDateTime", start);
   url.searchParams.set("endDateTime", end);
   url.searchParams.set("$orderby", "start/dateTime");
-  url.searchParams.set("$top", "20");
+  url.searchParams.set("$top", "250");
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) throw new Error(`Microsoft Graph calendar error: ${res.status}`);
@@ -299,6 +421,7 @@ async function fetchMicrosoftCalendarEvents(
   };
   return ((json.value ?? []) as GraphEvent[]).map((e) => ({
     id: `microsoft:${e.id}`,
+    nativeId: e.id,
     title: e.subject ?? "(no title)",
     start: e.start.dateTime,
     end: e.end?.dateTime ?? null,
@@ -306,6 +429,45 @@ async function fetchMicrosoftCalendarEvents(
     location: e.location?.displayName ?? null,
     source: "microsoft" as const,
   }));
+}
+
+async function createMicrosoftCalendarEvent(
+  accessToken: string,
+  input: NewCalendarEventInput,
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">> {
+  const body = {
+    subject: input.title,
+    location: input.location ? { displayName: input.location } : undefined,
+    isAllDay: input.allDay,
+    start: { dateTime: input.allDay ? input.start.slice(0, 10) : input.start, timeZone: "UTC" },
+    end: { dateTime: input.allDay ? input.end.slice(0, 10) : input.end, timeZone: "UTC" },
+  };
+
+  const res = await fetch("https://graph.microsoft.com/v1.0/me/events", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Microsoft Graph create error: ${res.status}`);
+  const e = await res.json();
+  return {
+    id: `microsoft:${e.id}`,
+    nativeId: e.id,
+    title: e.subject ?? input.title,
+    start: e.start?.dateTime ?? input.start,
+    end: e.end?.dateTime ?? input.end,
+    allDay: Boolean(e.isAllDay),
+    location: e.location?.displayName ?? null,
+    source: "microsoft" as const,
+  };
+}
+
+async function deleteMicrosoftCalendarEvent(accessToken: string, nativeId: string): Promise<void> {
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(nativeId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`Microsoft Graph delete error: ${res.status}`);
 }
 
 /**
@@ -534,23 +696,27 @@ async function fetchFacebookPageInsights(
 // Apple Calendar via CalDAV (iCloud)
 // ---------------------------------------------------------------------------
 
-async function fetchAppleCalendarEvents(
-  appleId: string,
-  appSpecificPassword: string,
-): Promise<Omit<CalendarEvent, "accountLabel">[]> {
-  const client = new DAVClient({
+function appleDavClient(appleId: string, appSpecificPassword: string): DAVClient {
+  return new DAVClient({
     serverUrl: "https://caldav.icloud.com",
     credentials: { username: appleId, password: appSpecificPassword },
     authMethod: "Basic",
     defaultAccountType: "caldav",
   });
+}
+
+async function fetchAppleCalendarEvents(
+  appleId: string,
+  appSpecificPassword: string,
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">[]> {
+  const client = appleDavClient(appleId, appSpecificPassword);
   await client.login();
   const calendars = await client.fetchCalendars();
 
-  const timeMin = new Date();
-  const timeMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const timeMin = new Date(Date.now() - CALENDAR_WINDOW_PAST_DAYS * 24 * 60 * 60 * 1000);
+  const timeMax = new Date(Date.now() + CALENDAR_WINDOW_FUTURE_DAYS * 24 * 60 * 60 * 1000);
 
-  const events: Omit<CalendarEvent, "accountLabel">[] = [];
+  const events: Omit<CalendarEvent, "accountLabel" | "integrationId">[] = [];
   for (const calendar of calendars) {
     const objects = await client.fetchCalendarObjects({
       calendar,
@@ -564,6 +730,7 @@ async function fetchAppleCalendarEvents(
       if (!parsed) continue;
       events.push({
         id: `apple:${obj.url}`,
+        nativeId: obj.url,
         title: parsed.title,
         start: parsed.start,
         end: parsed.end,
@@ -574,6 +741,77 @@ async function fetchAppleCalendarEvents(
     }
   }
   return events;
+}
+
+/** Escapes text per RFC 5545 §3.3.11 — commas, semicolons, and backslashes
+ * are structural in ICS values and must be escaped in free text fields. */
+function escapeIcsText(text: string): string {
+  return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;");
+}
+
+function toIcsDateTime(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}T${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}${String(d.getUTCSeconds()).padStart(2, "0")}Z`;
+}
+
+function toIcsDate(iso: string): string {
+  return iso.slice(0, 10).replace(/-/g, "");
+}
+
+async function createAppleCalendarEvent(
+  appleId: string,
+  appSpecificPassword: string,
+  input: NewCalendarEventInput,
+): Promise<Omit<CalendarEvent, "accountLabel" | "integrationId">> {
+  const client = appleDavClient(appleId, appSpecificPassword);
+  await client.login();
+  const calendars = await client.fetchCalendars();
+  const calendar = calendars[0];
+  if (!calendar) throw new Error("No iCloud calendar found to create the event in");
+
+  const uid = `homehub-${Date.now()}-${Math.random().toString(36).slice(2)}@homehub`;
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//HomeHub//EN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${toIcsDateTime(new Date().toISOString())}`,
+    input.allDay ? `DTSTART;VALUE=DATE:${toIcsDate(input.start)}` : `DTSTART:${toIcsDateTime(input.start)}`,
+    input.allDay ? `DTEND;VALUE=DATE:${toIcsDate(input.end)}` : `DTEND:${toIcsDateTime(input.end)}`,
+    `SUMMARY:${escapeIcsText(input.title)}`,
+    input.location ? `LOCATION:${escapeIcsText(input.location)}` : null,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter((line): line is string => line !== null);
+
+  const filename = `${uid}.ics`;
+  const response = await client.createCalendarObject({ calendar, iCalString: lines.join("\r\n"), filename });
+  if (!response.ok) throw new Error(`iCloud calendar create error: ${response.status}`);
+
+  return {
+    id: `apple:${new URL(filename, calendar.url).href}`,
+    nativeId: new URL(filename, calendar.url).href,
+    title: input.title,
+    start: input.start,
+    end: input.end,
+    allDay: input.allDay,
+    location: input.location ?? null,
+    source: "apple" as const,
+  };
+}
+
+async function deleteAppleCalendarEvent(
+  appleId: string,
+  appSpecificPassword: string,
+  url: string,
+): Promise<void> {
+  const client = appleDavClient(appleId, appSpecificPassword);
+  await client.login();
+  const response = await client.deleteCalendarObject({ calendarObject: { url } });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`iCloud calendar delete error: ${response.status}`);
+  }
 }
 
 /** Minimal VEVENT parser — avoids pulling in a full ICS library for a handful of fields. */

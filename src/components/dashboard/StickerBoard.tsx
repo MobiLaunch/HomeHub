@@ -4,11 +4,13 @@ import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
+import { useSnackbar } from "@/hooks/useSnackbar";
 import { mutate } from "swr";
 
 type Sticker = { id: string; emoji: string; x: number; y: number; rotation: number };
 
 const PALETTE = ["⭐", "❤️", "🎉", "☕️", "🌿", "🐶", "🏀", "🎵", "📌", "✅"];
+const TAP_MOVE_THRESHOLD_PX = 6;
 
 export function StickerBoard() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,11 +19,17 @@ export function StickerBoard() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pointerDownAt = useRef<{ x: number; y: number } | null>(null);
+  const didDrag = useRef(false);
+  const showSnackbar = useSnackbar();
 
   function onPointerDown(e: React.PointerEvent, sticker: Sticker) {
     e.preventDefault();
     (e.target as Element).setPointerCapture(e.pointerId);
     setDragId(sticker.id);
+    pointerDownAt.current = { x: e.clientX, y: e.clientY };
+    didDrag.current = false;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     setDragPos({
@@ -32,6 +40,11 @@ export function StickerBoard() {
 
   function onPointerMove(e: React.PointerEvent) {
     if (!dragId) return;
+    if (pointerDownAt.current) {
+      const dx = e.clientX - pointerDownAt.current.x;
+      const dy = e.clientY - pointerDownAt.current.y;
+      if (Math.hypot(dx, dy) > TAP_MOVE_THRESHOLD_PX) didDrag.current = true;
+    }
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
@@ -40,14 +53,21 @@ export function StickerBoard() {
   }
 
   async function onPointerUp() {
-    if (!dragId || !dragPos) {
-      setDragId(null);
-      return;
-    }
+    if (!dragId) return;
     const id = dragId;
     const pos = dragPos;
+    const wasTap = !didDrag.current;
     setDragId(null);
     setDragPos(null);
+
+    if (wasTap) {
+      // A tap (not a drag) selects the sticker to reveal its delete
+      // affordance, rather than committing a no-op position update.
+      setSelectedId((current) => (current === id ? null : id));
+      return;
+    }
+    setSelectedId(null);
+    if (!pos) return;
     mutate(
       "/api/stickers",
       (current: { stickers: Sticker[] } | undefined) =>
@@ -60,6 +80,29 @@ export function StickerBoard() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ x: pos.x, y: pos.y }),
+    });
+  }
+
+  async function removeSticker(sticker: Sticker) {
+    setSelectedId(null);
+    mutate(
+      "/api/stickers",
+      (current: { stickers: Sticker[] } | undefined) =>
+        current && { stickers: current.stickers.filter((s) => s.id !== sticker.id) },
+      { revalidate: false },
+    );
+    await fetch(`/api/stickers/${sticker.id}`, { method: "DELETE" });
+    mutate("/api/stickers");
+    showSnackbar("Sticker removed", {
+      label: "Undo",
+      onClick: async () => {
+        await fetch("/api/stickers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji: sticker.emoji, x: sticker.x, y: sticker.y, rotation: sticker.rotation }),
+        });
+        mutate("/api/stickers");
+      },
     });
   }
 
@@ -84,12 +127,16 @@ export function StickerBoard() {
       ref={containerRef}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) setSelectedId(null);
+      }}
       className="relative h-64 select-none overflow-hidden rounded-2xl"
       style={{ background: "var(--glass-fill-strong)" }}
     >
       <AnimatePresence>
         {stickers.map((sticker) => {
           const isDragging = sticker.id === dragId && dragPos;
+          const isSelected = sticker.id === selectedId;
           const x = isDragging ? dragPos!.x : sticker.x;
           const y = isDragging ? dragPos!.y : sticker.y;
           return (
@@ -117,6 +164,23 @@ export function StickerBoard() {
               <span className="inline-block transition-transform duration-150 group-hover:scale-125">
                 {sticker.emoji}
               </span>
+              {isSelected && (
+                <motion.span
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    removeSticker(sticker);
+                  }}
+                  className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full"
+                  style={{ background: "var(--m3-error)", color: "var(--m3-on-error)" }}
+                  aria-label={`Remove ${sticker.emoji} sticker`}
+                >
+                  <Icon name="close" className="h-3 w-3" />
+                </motion.span>
+              )}
             </motion.button>
           );
         })}

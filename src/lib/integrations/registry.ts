@@ -50,7 +50,10 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     scopes: [
-      "https://www.googleapis.com/auth/calendar.readonly",
+      // Covers both reading and creating/deleting events on the primary
+      // calendar — broader than plain `calendar.readonly`, needed for the
+      // dashboard's "add event" and delete support.
+      "https://www.googleapis.com/auth/calendar.events",
       "openid",
       "email",
       "profile",
@@ -69,7 +72,9 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     scopes: [
       "offline_access",
       "User.Read",
-      "Calendars.Read",
+      // ReadWrite (not just Read) so the dashboard can create/delete events,
+      // not only display them.
+      "Calendars.ReadWrite",
       "Chat.Read",
     ],
   },

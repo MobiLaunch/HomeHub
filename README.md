@@ -14,11 +14,14 @@ you connect it. It does need a real Postgres database, though — see below.
 
 - **Splash → setup wizard → dashboard** — first run walks through naming your
   household, connecting accounts, and choosing which tiles to show.
-- **Dashboard tiles**: upcoming calendar events (Google / Microsoft / Apple),
-  recent messages (Slack / Teams), Facebook Page comments & Messenger
-  activity plus Page insights, what's playing on Spotify (album art with a
-  spinning-record overlay, tap to see more from that album), sticky notes,
-  and a draggable emoji sticker board.
+- **Dashboard tiles**: a calendar (Google / Microsoft / Apple) with Agenda,
+  Week, Month, and Year views and full add/delete event support, recent
+  messages (Slack / Teams), Facebook Page comments & Messenger activity plus
+  Page insights, what's playing on Spotify (album art with a spinning-record
+  overlay, tap to see more from that album), editable sticky notes, and a
+  draggable emoji sticker board.
+- A floating quick-add button on the dashboard for adding a note or sticker
+  from anywhere, without scrolling to those tiles.
 - **Settings panel** to connect/disconnect every integration, toggle tiles,
   edit household name/timezone, and switch light/dark/system appearance.
 - OAuth tokens (and the Apple app-specific password) are encrypted at rest
@@ -89,6 +92,27 @@ Add the ones you have to `.env`, restart `npm run dev`, then go to
 **Settings → Connected accounts** and click Connect. Every redirect URI is
 `{APP_URL}/api/integrations/{provider}/callback`.
 
+### Calendar: views + adding/deleting events
+
+The calendar tile has four views (Agenda / Week / Month / Year) sharing one
+fetch — switching views is instant, client-side filtering rather than a
+refetch, with a spring-animated crossfade between them. Month/Year cells are
+clickable to drill into that day or month.
+
+The **+** button creates an event on whichever connected calendar account
+you pick (Google, Microsoft, or Apple), and clicking any event opens a detail
+sheet with a Delete button. This needed *write* scopes — `calendar.events`
+for Google, `Calendars.ReadWrite` for Microsoft — broader than the
+read-only scopes this app originally requested. **If you connected Google
+or Microsoft Calendar before this feature shipped, disconnect and reconnect
+it in Settings** — a stored OAuth token only carries the scopes it was
+granted at the time, so an old connection can display events but will fail
+to create/delete them until you reconnect. Apple Calendar's CalDAV
+credentials already had write access, so no reconnect is needed there.
+
+A known simplification: events are grouped by their *start* day only, so a
+multi-day event shows on the day it starts, not on every day it spans.
+
 A couple of honest platform limits, so the tiles don't over-promise:
 
 - **Facebook Page, not personal profile**: connecting Facebook exchanges your
@@ -122,6 +146,7 @@ roles/elevation in `src/app/globals.css`.
   logic, and the live data fetchers for each service.
 - `src/lib/crypto.ts` — token encryption at rest.
 - `src/components` — UI, including the shared `IntegrationsPanel` used by
-  both the setup wizard and Settings.
+  both the setup wizard and Settings, and `dashboard/calendar/` for the
+  Agenda/Week/Month/Year views plus the new/delete-event UI.
 - `prisma/schema.prisma` — data model (Household, Integration, Note, Sticker,
   TilePreference).
