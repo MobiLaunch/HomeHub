@@ -3,7 +3,12 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { encryptSecret } from "@/lib/crypto";
 import { PROVIDERS, isOAuthProvider } from "@/lib/integrations/registry";
-import { exchangeCodeForTokens, fetchIdentity, OAUTH_STATE_COOKIE_PREFIX } from "@/lib/integrations/oauth";
+import {
+  exchangeCodeForTokens,
+  exchangeFacebookPageAccess,
+  fetchIdentity,
+  OAUTH_STATE_COOKIE_PREFIX,
+} from "@/lib/integrations/oauth";
 import type { IntegrationProvider } from "@/generated/prisma/enums";
 
 type OAuthState = {
@@ -60,34 +65,54 @@ export async function GET(
 
   try {
     const tokens = await exchangeCodeForTokens(config, code, redirectUri);
-    const identity = await fetchIdentity(config.id, tokens.accessToken);
+
+    // Facebook Page data (comments, Messenger, insights) requires a Page
+    // Access Token, not the user access token the standard exchange above
+    // returns — swap it out here before anything is persisted.
+    let externalAccountId: string;
+    let label: string;
+    let accessToken: string;
+    let refreshToken: string | undefined;
+    let expiresInSeconds: number | undefined;
+
+    if (config.id === "facebook") {
+      const page = await exchangeFacebookPageAccess(tokens.accessToken);
+      externalAccountId = page.pageId;
+      label = page.pageName;
+      accessToken = page.pageAccessToken;
+      refreshToken = undefined;
+      expiresInSeconds = undefined;
+    } else {
+      const identity = await fetchIdentity(config.id, tokens.accessToken);
+      externalAccountId = identity.externalAccountId;
+      label = identity.label;
+      accessToken = tokens.accessToken;
+      refreshToken = tokens.refreshToken;
+      expiresInSeconds = tokens.expiresInSeconds;
+    }
 
     await db.integration.upsert({
       where: {
         provider_externalAccountId: {
           provider: config.id,
-          externalAccountId: identity.externalAccountId,
+          externalAccountId,
         },
       },
       create: {
         provider: config.id,
-        externalAccountId: identity.externalAccountId,
-        label: identity.label,
+        externalAccountId,
+        label,
         status: "connected",
-        accessTokenEnc: encryptSecret(tokens.accessToken),
-        refreshTokenEnc: tokens.refreshToken ? encryptSecret(tokens.refreshToken) : null,
-        tokenExpiresAt: tokens.expiresInSeconds
-          ? new Date(Date.now() + tokens.expiresInSeconds * 1000)
-          : null,
+        accessTokenEnc: encryptSecret(accessToken),
+        refreshTokenEnc: refreshToken ? encryptSecret(refreshToken) : null,
+        tokenExpiresAt: expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000) : null,
       },
       update: {
-        label: identity.label,
+        label,
         status: "connected",
-        accessTokenEnc: encryptSecret(tokens.accessToken),
-        refreshTokenEnc: tokens.refreshToken ? encryptSecret(tokens.refreshToken) : undefined,
-        tokenExpiresAt: tokens.expiresInSeconds
-          ? new Date(Date.now() + tokens.expiresInSeconds * 1000)
-          : null,
+        accessTokenEnc: encryptSecret(accessToken),
+        refreshTokenEnc: refreshToken ? encryptSecret(refreshToken) : undefined,
+        tokenExpiresAt: expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000) : null,
         lastError: null,
       },
     });

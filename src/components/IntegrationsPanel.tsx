@@ -9,7 +9,7 @@ import {
   CalendarDays,
   Building2,
   Hash,
-  Cake,
+  ThumbsUp,
   Apple,
   Link as LinkIcon,
   Unlink,
@@ -39,7 +39,7 @@ const ICONS: Record<ProviderInfo["id"], typeof CalendarDays> = {
   google: CalendarDays,
   microsoft: Building2,
   slack: Hash,
-  facebook: Cake,
+  facebook: ThumbsUp,
   apple: Apple,
 };
 

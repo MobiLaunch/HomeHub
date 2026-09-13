@@ -14,8 +14,9 @@ you connect it. It does need a real Postgres database, though — see below.
 - **Splash → setup wizard → dashboard** — first run walks through naming your
   household, connecting accounts, and choosing which tiles to show.
 - **Dashboard tiles**: upcoming calendar events (Google / Microsoft / Apple),
-  recent messages (Slack / Teams), birthday & social notifications (Facebook),
-  sticky notes, and a draggable emoji sticker board.
+  recent messages (Slack / Teams), Facebook Page comments & Messenger
+  activity plus Page insights, sticky notes, and a draggable emoji sticker
+  board.
 - **Settings panel** to connect/disconnect every integration, toggle tiles,
   edit household name/timezone, and switch light/dark/system appearance.
 - OAuth tokens (and the Apple app-specific password) are encrypted at rest
@@ -78,7 +79,7 @@ short:
 | Google Calendar | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console → OAuth client |
 | Microsoft 365 (Outlook + Teams) | `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Azure Entra ID → App registration |
 | Slack | `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` | api.slack.com/apps |
-| Facebook | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | developers.facebook.com/apps |
+| Facebook Page | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | developers.facebook.com/apps |
 | Apple Calendar (iCloud) | Apple ID + app-specific password | Entered directly in Settings — no env vars |
 
 Add the ones you have to `.env`, restart `npm run dev`, then go to
@@ -87,9 +88,10 @@ Add the ones you have to `.env`, restart `npm run dev`, then go to
 
 A couple of honest platform limits, so the tiles don't over-promise:
 
-- **Facebook birthdays**: Meta stopped letting third-party apps read a
-  friend list's birthdays back in 2018. This tile can only ever show the
-  connected account's *own* birthday reminder, not friends'.
+- **Facebook Page, not personal profile**: connecting Facebook exchanges your
+  login for a *Page* access token (via the admin account you connect with),
+  not your personal profile's. It syncs the Page's own comments, Messenger
+  conversations, and insights — not your friends' activity.
 - **Teams messages**: reading chat via Microsoft Graph needs the `Chat.Read`
   scope, which many organizational tenants gate behind admin consent. The
   Messages tile degrades gracefully (just shows nothing from that source)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, MessageSquare, Bell, StickyNote, Sparkles } from "lucide-react";
+import { CalendarDays, MessageSquare, Bell, StickyNote, Sparkles, ThumbsUp } from "lucide-react";
 import { GreetingHeader } from "@/components/dashboard/GreetingHeader";
 import { Tile } from "@/components/dashboard/Tile";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
@@ -9,6 +9,7 @@ import { MessagesTile } from "@/components/dashboard/MessagesTile";
 import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
 import { NotesTile } from "@/components/dashboard/NotesTile";
 import { StickerBoard } from "@/components/dashboard/StickerBoard";
+import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
 
 type TilePref = { tileType: string; enabled: boolean; position: number; size: "sm" | "md" | "lg" };
 
@@ -18,6 +19,11 @@ const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; rend
   notifications: { title: "Live activity", icon: <Bell className="h-4 w-4" />, render: () => <LiveActivityStack /> },
   notes: { title: "Notes", icon: <StickyNote className="h-4 w-4" />, render: () => <NotesTile /> },
   stickers: { title: "Sticker board", icon: <Sparkles className="h-4 w-4" />, render: () => <StickerBoard /> },
+  facebook_insights: {
+    title: "Page insights",
+    icon: <ThumbsUp className="h-4 w-4" />,
+    render: () => <FacebookInsightsTile />,
+  },
 };
 
 export default function DashboardPage() {

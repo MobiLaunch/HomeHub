@@ -24,13 +24,24 @@ export type LiveMessage = {
   accountLabel: string;
 };
 
-export type LiveNotification = {
+export type FacebookActivityItem = {
   id: string;
-  type: "birthday" | "social";
-  title: string;
-  subtitle: string | null;
-  date: string; // ISO
-  source: "facebook";
+  kind: "comment" | "message";
+  authorName: string;
+  text: string;
+  postMessage: string | null; // parent post text, for a comment item
+  timestamp: string; // ISO
+  permalink: string | null;
+  accountLabel: string;
+};
+
+export type FacebookPageInsights = {
+  pageId: string;
+  pageName: string;
+  followers: number | null;
+  impressions28d: number | null;
+  engagedUsers28d: number | null;
+  newFollowers28d: number | null;
   accountLabel: string;
 };
 
@@ -125,7 +136,7 @@ export async function fetchLiveMessages(): Promise<LiveMessage[]> {
     .slice(0, 25);
 }
 
-export async function fetchLiveNotifications(): Promise<LiveNotification[]> {
+export async function fetchFacebookActivity(): Promise<FacebookActivityItem[]> {
   const integrations = await db.integration.findMany({
     where: { provider: "facebook", status: { in: ["connected", "error"] } },
   });
@@ -134,10 +145,16 @@ export async function fetchLiveNotifications(): Promise<LiveNotification[]> {
     integrations.map(async (integration) => {
       try {
         const token = await getValidAccessToken(integration);
-        if (!token) return [];
-        const notifications = await fetchFacebookNotifications(token);
+        if (!token || !integration.externalAccountId) return [];
+        const [comments, messages] = await Promise.all([
+          fetchFacebookPageComments(integration.externalAccountId, token),
+          fetchFacebookPageMessages(integration.externalAccountId, token),
+        ]);
         await markSynced(integration.id);
-        return notifications.map((n) => ({ ...n, accountLabel: integration.label }));
+        return [...comments, ...messages].map((item) => ({
+          ...item,
+          accountLabel: integration.label,
+        }));
       } catch (err) {
         await markSynced(integration.id, (err as Error).message);
         return [];
@@ -145,7 +162,30 @@ export async function fetchLiveNotifications(): Promise<LiveNotification[]> {
     }),
   );
 
-  return results.flat();
+  return results.flat().sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+export async function fetchFacebookInsights(): Promise<FacebookPageInsights[]> {
+  const integrations = await db.integration.findMany({
+    where: { provider: "facebook", status: { in: ["connected", "error"] } },
+  });
+
+  const results = await Promise.all(
+    integrations.map(async (integration) => {
+      try {
+        const token = await getValidAccessToken(integration);
+        if (!token || !integration.externalAccountId) return null;
+        const insights = await fetchFacebookPageInsights(integration.externalAccountId, token);
+        await markSynced(integration.id);
+        return { ...insights, pageName: integration.label, accountLabel: integration.label };
+      } catch (err) {
+        await markSynced(integration.id, (err as Error).message);
+        return null;
+      }
+    }),
+  );
+
+  return results.filter((r): r is FacebookPageInsights => r !== null);
 }
 
 // ---------------------------------------------------------------------------
@@ -307,37 +347,143 @@ async function fetchSlackMessages(accessToken: string): Promise<Omit<LiveMessage
 // ---------------------------------------------------------------------------
 
 /**
- * Meta's Graph API has not allowed third-party apps to read a friend list's
- * birthdays since the 2018 platform lockdown — `user_friends` only returns
- * friends who also authorized this same app. We surface the connected
- * account's own profile/birthday as a "notification" so the tile is
- * genuinely live rather than pretending friend-birthday sync works.
+ * Recent comments on the Page's posts, using the Page Access Token (not the
+ * user token) — this is what `pages_read_engagement`/`pages_read_user_content`
+ * actually grant. We pull the last handful of posts and flatten their most
+ * recent comments into one activity feed rather than exposing per-post
+ * pagination, since the dashboard tile only shows a handful of items anyway.
  */
-async function fetchFacebookNotifications(
-  accessToken: string,
-): Promise<Omit<LiveNotification, "accountLabel">[]> {
-  const res = await fetch(
-    `https://graph.facebook.com/me?fields=id,name,birthday&access_token=${accessToken}`,
+async function fetchFacebookPageComments(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<Omit<FacebookActivityItem, "accountLabel">[]> {
+  const url = new URL(`https://graph.facebook.com/v21.0/${pageId}/feed`);
+  url.searchParams.set(
+    "fields",
+    "message,permalink_url,comments.limit(5){message,from,created_time,permalink_url}",
   );
-  if (!res.ok) throw new Error(`Facebook Graph API error: ${res.status}`);
+  url.searchParams.set("limit", "10");
+  url.searchParams.set("access_token", pageAccessToken);
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Facebook Page feed error: ${res.status}`);
   const json = await res.json();
-  if (!json.birthday) return [];
 
-  const [month, day] = json.birthday.split("/");
-  const now = new Date();
-  const nextBirthday = new Date(now.getFullYear(), Number(month) - 1, Number(day));
-  if (nextBirthday < now) nextBirthday.setFullYear(now.getFullYear() + 1);
+  type Comment = {
+    id: string;
+    message?: string;
+    from?: { name?: string };
+    created_time: string;
+    permalink_url?: string;
+  };
+  type Post = {
+    id: string;
+    message?: string;
+    permalink_url?: string;
+    comments?: { data?: Comment[] };
+  };
 
-  return [
-    {
-      id: `facebook:${json.id}:birthday`,
-      type: "birthday" as const,
-      title: `${json.name}'s birthday`,
-      subtitle: "From Facebook",
-      date: nextBirthday.toISOString(),
-      source: "facebook" as const,
-    },
-  ];
+  const items: Omit<FacebookActivityItem, "accountLabel">[] = [];
+  for (const post of (json.data ?? []) as Post[]) {
+    for (const comment of post.comments?.data ?? []) {
+      if (!comment.message) continue;
+      items.push({
+        id: `facebook:comment:${comment.id}`,
+        kind: "comment",
+        authorName: comment.from?.name ?? "Someone",
+        text: comment.message,
+        postMessage: post.message ?? null,
+        timestamp: comment.created_time,
+        permalink: comment.permalink_url ?? post.permalink_url ?? null,
+      });
+    }
+  }
+  return items;
+}
+
+/**
+ * Recent Messenger conversations for the Page. `/​{page-id}/conversations`
+ * only exposes a snippet of the latest message per thread (reading full
+ * message bodies needs a per-conversation call this dashboard tile doesn't
+ * need) — that snippet is exactly the "new activity" signal the live feed
+ * wants.
+ */
+async function fetchFacebookPageMessages(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<Omit<FacebookActivityItem, "accountLabel">[]> {
+  const url = new URL(`https://graph.facebook.com/v21.0/${pageId}/conversations`);
+  url.searchParams.set("fields", "snippet,updated_time,participants,link");
+  url.searchParams.set("limit", "10");
+  url.searchParams.set("access_token", pageAccessToken);
+
+  const res = await fetch(url);
+  if (res.status === 403) return []; // pages_messaging not yet granted App Review, if applicable
+  if (!res.ok) throw new Error(`Facebook Page conversations error: ${res.status}`);
+  const json = await res.json();
+
+  type Participant = { name?: string; id?: string };
+  type Conversation = {
+    id: string;
+    snippet?: string;
+    updated_time: string;
+    link?: string;
+    participants?: { data?: Participant[] };
+  };
+
+  return ((json.data ?? []) as Conversation[])
+    .filter((c) => c.snippet)
+    .map((c) => {
+      const other = c.participants?.data?.find((p) => p.id !== pageId);
+      return {
+        id: `facebook:message:${c.id}`,
+        kind: "message" as const,
+        authorName: other?.name ?? "Messenger",
+        text: c.snippet ?? "",
+        postMessage: null,
+        timestamp: c.updated_time,
+        permalink: c.link ?? null,
+      };
+    });
+}
+
+/**
+ * Page-level stats via the Insights API. `read_insights` is scrutinized
+ * more tightly than the other Page permissions, and the metric set Meta
+ * accepts changes across API versions — degrade individual metrics to null
+ * rather than failing the whole tile if one lookup errors.
+ */
+async function fetchFacebookPageInsights(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<Omit<FacebookPageInsights, "pageName" | "accountLabel">> {
+  const profileRes = await fetch(
+    `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count&access_token=${pageAccessToken}`,
+  );
+  const profileJson = profileRes.ok ? await profileRes.json() : {};
+
+  const insightsUrl = new URL(`https://graph.facebook.com/v21.0/${pageId}/insights`);
+  insightsUrl.searchParams.set("metric", "page_impressions,page_engaged_users,page_fan_adds");
+  insightsUrl.searchParams.set("period", "days_28");
+  insightsUrl.searchParams.set("access_token", pageAccessToken);
+  const insightsRes = await fetch(insightsUrl);
+  const insightsJson = insightsRes.ok ? await insightsRes.json() : { data: [] };
+
+  type Metric = { name: string; values?: { value: number }[] };
+  const metrics = (insightsJson.data ?? []) as Metric[];
+  const latestValue = (name: string) => {
+    const metric = metrics.find((m) => m.name === name);
+    const values = metric?.values ?? [];
+    return values.length > 0 ? values[values.length - 1].value : null;
+  };
+
+  return {
+    pageId,
+    followers: typeof profileJson.followers_count === "number" ? profileJson.followers_count : null,
+    impressions28d: latestValue("page_impressions"),
+    engagedUsers28d: latestValue("page_engaged_users"),
+    newFollowers28d: latestValue("page_fan_adds"),
+  };
 }
 
 // ---------------------------------------------------------------------------

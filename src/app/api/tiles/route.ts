@@ -7,14 +7,18 @@ const DEFAULT_TILES = [
   { tileType: "notifications", position: 2, size: "md" },
   { tileType: "notes", position: 3, size: "md" },
   { tileType: "stickers", position: 4, size: "lg" },
+  { tileType: "facebook_insights", position: 5, size: "md" },
 ];
 
 export async function GET() {
   const existing = await db.tilePreference.findMany({ orderBy: { position: "asc" } });
-  if (existing.length === 0) {
-    await db.tilePreference.createMany({ data: DEFAULT_TILES });
-    const seeded = await db.tilePreference.findMany({ orderBy: { position: "asc" } });
-    return NextResponse.json({ tiles: seeded });
+  const missing = DEFAULT_TILES.filter(
+    (def) => !existing.some((tile) => tile.tileType === def.tileType),
+  );
+  if (missing.length > 0) {
+    await db.tilePreference.createMany({ data: missing });
+    const withDefaults = await db.tilePreference.findMany({ orderBy: { position: "asc" } });
+    return NextResponse.json({ tiles: withDefaults });
   }
   return NextResponse.json({ tiles: existing });
 }

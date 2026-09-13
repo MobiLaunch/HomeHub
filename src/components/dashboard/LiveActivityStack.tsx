@@ -2,20 +2,22 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, Cake, ChevronRight, MapPin, Clock } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Clock, MessageCircle } from "lucide-react";
 import { useLive } from "@/hooks/useLive";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
-import type { CalendarEvent, LiveMessage, LiveNotification } from "@/lib/integrations/live";
+import type { CalendarEvent, LiveMessage, FacebookActivityItem } from "@/lib/integrations/live";
 
 type ActivityItem =
   | { kind: "message"; id: string; author: string; channel: string; text: string }
   | { kind: "calendar"; id: string; title: string; when: string; allDay: boolean; location: string | null }
-  | { kind: "social"; id: string; title: string; subtitle: string | null; date: string };
+  | { kind: "fb_comment"; id: string; author: string; text: string; postMessage: string | null }
+  | { kind: "fb_message"; id: string; author: string; text: string };
 
 const CARD_STYLE: Record<ActivityItem["kind"], { gradient: string; ink: string }> = {
   message: { gradient: "linear-gradient(135deg, #7c7bff, #a78bfa)", ink: "#ffffff" },
   calendar: { gradient: "linear-gradient(135deg, #60a5fa, #38bdf8)", ink: "#ffffff" },
-  social: { gradient: "linear-gradient(135deg, #f472b6, #fb923c)", ink: "#ffffff" },
+  fb_comment: { gradient: "linear-gradient(135deg, #f472b6, #fb923c)", ink: "#ffffff" },
+  fb_message: { gradient: "linear-gradient(135deg, #34d399, #22d3ee)", ink: "#ffffff" },
 };
 
 function formatEventWhen(event: CalendarEvent): string {
@@ -29,9 +31,9 @@ function formatEventWhen(event: CalendarEvent): string {
 export function LiveActivityStack() {
   const { data: calendarData } = useLive<{ events: CalendarEvent[] }>("/api/live/calendar", 60_000);
   const { data: messagesData } = useLive<{ messages: LiveMessage[] }>("/api/live/messages", 30_000);
-  const { data: notificationsData } = useLive<{ notifications: LiveNotification[] }>(
-    "/api/live/notifications",
-    5 * 60_000,
+  const { data: facebookData } = useLive<{ activity: FacebookActivityItem[] }>(
+    "/api/live/facebook-activity",
+    2 * 60_000,
   );
   const [front, setFront] = useState(0);
   const { ref: glowRef, onPointerMove: glowMove, onPointerLeave: glowLeave } = usePointerGlow<HTMLButtonElement>();
@@ -50,15 +52,18 @@ export function LiveActivityStack() {
         location: e.location,
       }),
     ),
-    ...(notificationsData?.notifications ?? []).map(
-      (n): ActivityItem => ({ kind: "social", id: n.id, title: n.title, subtitle: n.subtitle, date: n.date }),
+    ...(facebookData?.activity ?? []).slice(0, 3).map(
+      (a): ActivityItem =>
+        a.kind === "comment"
+          ? { kind: "fb_comment", id: a.id, author: a.authorName, text: a.text, postMessage: a.postMessage }
+          : { kind: "fb_message", id: a.id, author: a.authorName, text: a.text },
     ),
   ];
 
   if (items.length === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 text-center">
-        <Cake className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+        <MessageCircle className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
         <p className="max-w-[240px] text-xs" style={{ color: "var(--ink-soft)" }}>
           Nothing needs your attention yet — connect an account in Settings to see live activity here.
         </p>
@@ -222,25 +227,60 @@ function ActivityCardContent({ item }: { item: ActivityItem }) {
     );
   }
 
+  if (item.kind === "fb_comment") {
+    const initial = item.author.trim().charAt(0).toUpperCase() || "?";
+    return (
+      <>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-semibold"
+            style={{ background: style.gradient, color: style.ink }}
+          >
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>
+              {item.author} commented
+            </p>
+            {item.postMessage && (
+              <p className="truncate text-xs" style={{ color: "var(--ink-soft)" }}>
+                on &ldquo;{item.postMessage}&rdquo;
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="line-clamp-2 text-sm leading-snug" style={{ color: "var(--ink)" }}>
+          {item.text}
+        </p>
+        <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
+          Next <ChevronRight className="h-3.5 w-3.5" />
+        </span>
+      </>
+    );
+  }
+
+  const initial = item.author.trim().charAt(0).toUpperCase() || "?";
   return (
     <>
       <div className="flex items-center gap-3">
         <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-semibold"
           style={{ background: style.gradient, color: style.ink }}
         >
-          <Cake className="h-5 w-5" />
+          {initial}
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>
-            {item.title}
+            {item.author} messaged your Page
           </p>
-          <p className="text-xs" style={{ color: "var(--ink-soft)" }}>
-            {new Date(item.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-            {item.subtitle ? ` · ${item.subtitle}` : ""}
+          <p className="truncate text-xs" style={{ color: "var(--ink-soft)" }}>
+            Messenger
           </p>
         </div>
       </div>
+      <p className="line-clamp-2 text-sm leading-snug" style={{ color: "var(--ink)" }}>
+        {item.text}
+      </p>
       <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
         Next <ChevronRight className="h-3.5 w-3.5" />
       </span>

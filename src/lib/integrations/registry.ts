@@ -89,13 +89,23 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
   facebook: {
     authType: "oauth",
     id: "facebook",
-    displayName: "Facebook",
-    description: "Birthday reminders and profile notifications.",
+    displayName: "Facebook Page",
+    description: "Comments, Messenger messages, and insights from your Facebook Page.",
     clientIdEnv: "FACEBOOK_CLIENT_ID",
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authorizeUrl: "https://www.facebook.com/v21.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    scopes: ["public_profile", "user_birthday"],
+    // Page-level permissions. All five are available in Development Mode to
+    // the app's own admins/developers/testers without App Review — which is
+    // sufficient for a single household syncing its own Page.
+    scopes: [
+      "public_profile",
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_read_user_content",
+      "pages_messaging",
+      "read_insights",
+    ],
   },
   apple: {
     authType: "credentials",
