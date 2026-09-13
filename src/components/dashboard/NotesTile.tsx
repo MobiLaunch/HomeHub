@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { mutate } from "swr";
 
@@ -56,7 +56,7 @@ export function NotesTile() {
           className="glass-pill flex h-9 w-9 shrink-0 items-center justify-center"
           aria-label="Add note"
         >
-          <Plus className="h-4 w-4" style={{ color: "var(--accent)" }} />
+          <Icon name="add" className="h-4 w-4" style={{ color: "var(--accent)" }} />
         </motion.button>
       </div>
       <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
@@ -79,7 +79,7 @@ export function NotesTile() {
                 className="absolute right-1.5 top-1.5 rounded-full p-1 opacity-0 transition group-hover:opacity-70 hover:!opacity-100"
                 aria-label="Delete note"
               >
-                <Trash2 className="h-3 w-3" />
+                <Icon name="delete" className="h-3 w-3" />
               </button>
             </motion.div>
           ))}

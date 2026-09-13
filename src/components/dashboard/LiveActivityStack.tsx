@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChevronRight, MapPin, Clock, MessageCircle } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 import type { CalendarEvent, LiveMessage, FacebookActivityItem } from "@/lib/integrations/live";
@@ -63,7 +63,7 @@ export function LiveActivityStack() {
   if (items.length === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 text-center">
-        <MessageCircle className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+        <Icon name="chat_bubble" className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
         <p className="max-w-[240px] text-xs" style={{ color: "var(--ink-soft)" }}>
           Nothing needs your attention yet — connect an account in Settings to see live activity here.
         </p>
@@ -190,7 +190,7 @@ function ActivityCardContent({ item }: { item: ActivityItem }) {
           {item.text}
         </p>
         <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
-          Next <ChevronRight className="h-3.5 w-3.5" />
+          Next <Icon name="chevron_right" className="h-3.5 w-3.5" />
         </span>
       </>
     );
@@ -204,24 +204,24 @@ function ActivityCardContent({ item }: { item: ActivityItem }) {
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
             style={{ background: style.gradient, color: style.ink }}
           >
-            <CalendarDays className="h-5 w-5" />
+            <Icon name="calendar_month" className="h-5 w-5" filled />
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>
               {item.title}
             </p>
             <p className="flex items-center gap-1 text-xs" style={{ color: "var(--ink-soft)" }}>
-              <Clock className="h-3 w-3" /> {item.when}
+              <Icon name="schedule" className="h-3 w-3" /> {item.when}
             </p>
           </div>
         </div>
         {item.location && (
           <p className="flex items-center gap-1 text-xs" style={{ color: "var(--ink-soft)" }}>
-            <MapPin className="h-3 w-3" /> {item.location}
+            <Icon name="location_on" className="h-3 w-3" /> {item.location}
           </p>
         )}
         <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
-          Next <ChevronRight className="h-3.5 w-3.5" />
+          Next <Icon name="chevron_right" className="h-3.5 w-3.5" />
         </span>
       </>
     );
@@ -253,7 +253,7 @@ function ActivityCardContent({ item }: { item: ActivityItem }) {
           {item.text}
         </p>
         <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
-          Next <ChevronRight className="h-3.5 w-3.5" />
+          Next <Icon name="chevron_right" className="h-3.5 w-3.5" />
         </span>
       </>
     );
@@ -282,7 +282,7 @@ function ActivityCardContent({ item }: { item: ActivityItem }) {
         {item.text}
       </p>
       <span className="mt-auto flex items-center gap-1 self-end text-xs" style={{ color: "var(--accent)" }}>
-        Next <ChevronRight className="h-3.5 w-3.5" />
+        Next <Icon name="chevron_right" className="h-3.5 w-3.5" />
       </span>
     </>
   );

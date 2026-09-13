@@ -107,6 +107,17 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
       "read_insights",
     ],
   },
+  spotify: {
+    authType: "oauth",
+    id: "spotify",
+    displayName: "Spotify",
+    description: "See what's playing, with album art, on your dashboard.",
+    clientIdEnv: "SPOTIFY_CLIENT_ID",
+    clientSecretEnv: "SPOTIFY_CLIENT_SECRET",
+    authorizeUrl: "https://accounts.spotify.com/authorize",
+    tokenUrl: "https://accounts.spotify.com/api/token",
+    scopes: ["user-read-currently-playing", "user-read-playback-state", "user-read-recently-played"],
+  },
   apple: {
     authType: "credentials",
     id: "apple",

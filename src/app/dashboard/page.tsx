@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, MessageSquare, Bell, StickyNote, Sparkles, ThumbsUp } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { GreetingHeader } from "@/components/dashboard/GreetingHeader";
 import { Tile } from "@/components/dashboard/Tile";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
@@ -10,20 +10,22 @@ import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
 import { NotesTile } from "@/components/dashboard/NotesTile";
 import { StickerBoard } from "@/components/dashboard/StickerBoard";
 import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
+import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
 
 type TilePref = { tileType: string; enabled: boolean; position: number; size: "sm" | "md" | "lg" };
 
 const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; render: () => React.ReactNode }> = {
-  calendar: { title: "Family calendar", icon: <CalendarDays className="h-4 w-4" />, render: () => <CalendarTile /> },
-  messages: { title: "Messages", icon: <MessageSquare className="h-4 w-4" />, render: () => <MessagesTile /> },
-  notifications: { title: "Live activity", icon: <Bell className="h-4 w-4" />, render: () => <LiveActivityStack /> },
-  notes: { title: "Notes", icon: <StickyNote className="h-4 w-4" />, render: () => <NotesTile /> },
-  stickers: { title: "Sticker board", icon: <Sparkles className="h-4 w-4" />, render: () => <StickerBoard /> },
+  calendar: { title: "Family calendar", icon: <Icon name="calendar_month" />, render: () => <CalendarTile /> },
+  messages: { title: "Messages", icon: <Icon name="forum" />, render: () => <MessagesTile /> },
+  notifications: { title: "Live activity", icon: <Icon name="notifications" />, render: () => <LiveActivityStack /> },
+  notes: { title: "Notes", icon: <Icon name="sticky_note_2" />, render: () => <NotesTile /> },
+  stickers: { title: "Sticker board", icon: <Icon name="auto_awesome" />, render: () => <StickerBoard /> },
   facebook_insights: {
     title: "Page insights",
-    icon: <ThumbsUp className="h-4 w-4" />,
+    icon: <Icon name="thumb_up" />,
     render: () => <FacebookInsightsTile />,
   },
+  spotify: { title: "Now playing", icon: <Icon name="graphic_eq" />, render: () => <SpotifyWidget /> },
 };
 
 export default function DashboardPage() {

@@ -1,8 +1,9 @@
 # HomeHub
 
 A tile-first household dashboard: one glanceable screen for your calendars,
-messages, birthdays, notes, and stickers — built as a real, live web app on
-Next.js 16 + Prisma/Postgres, with a "liquid glass" translucent UI.
+messages, Facebook Page activity, Spotify, notes, and stickers — built as a
+real, live web app on Next.js 16 + Prisma/Postgres, with a Material 3
+Expressive UI (Google Sans, Material Symbols, tonal color surfaces).
 
 The app runs fully with no integrations connected — you'll just see empty
 tiles and "not yet configured" badges until you wire up accounts from
@@ -15,8 +16,9 @@ you connect it. It does need a real Postgres database, though — see below.
   household, connecting accounts, and choosing which tiles to show.
 - **Dashboard tiles**: upcoming calendar events (Google / Microsoft / Apple),
   recent messages (Slack / Teams), Facebook Page comments & Messenger
-  activity plus Page insights, sticky notes, and a draggable emoji sticker
-  board.
+  activity plus Page insights, what's playing on Spotify (album art with a
+  spinning-record overlay, tap to see more from that album), sticky notes,
+  and a draggable emoji sticker board.
 - **Settings panel** to connect/disconnect every integration, toggle tiles,
   edit household name/timezone, and switch light/dark/system appearance.
 - OAuth tokens (and the Apple app-specific password) are encrypted at rest
@@ -80,6 +82,7 @@ short:
 | Microsoft 365 (Outlook + Teams) | `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Azure Entra ID → App registration |
 | Slack | `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` | api.slack.com/apps |
 | Facebook Page | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | developers.facebook.com/apps |
+| Spotify | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | developer.spotify.com/dashboard |
 | Apple Calendar (iCloud) | Apple ID + app-specific password | Entered directly in Settings — no env vars |
 
 Add the ones you have to `.env`, restart `npm run dev`, then go to
@@ -96,12 +99,20 @@ A couple of honest platform limits, so the tiles don't over-promise:
   scope, which many organizational tenants gate behind admin consent. The
   Messages tile degrades gracefully (just shows nothing from that source)
   rather than erroring if it isn't granted.
+- **Spotify shows, not plays**: the widget displays what's currently (or
+  most recently) playing and links tracks out to open in Spotify — it
+  doesn't control playback in-browser. That needs Spotify's Web Playback
+  SDK and a Premium account on the connected side; reading now-playing data
+  doesn't.
 
 ## Tech
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
 Prisma 7 + `pg` driver adapter (Postgres) · framer-motion · SWR for live
-polling.
+polling. Material 3 Expressive design system: Google Sans (via `next/font`),
+a self-hosted Material Symbols Rounded icon font (`public/fonts`, ligature
+glyphs rendered through `src/components/Icon.tsx`), and M3 tonal color
+roles/elevation in `src/app/globals.css`.
 
 ## Project structure
 

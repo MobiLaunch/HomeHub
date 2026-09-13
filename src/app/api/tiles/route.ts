@@ -8,6 +8,7 @@ const DEFAULT_TILES = [
   { tileType: "notes", position: 3, size: "md" },
   { tileType: "stickers", position: 4, size: "lg" },
   { tileType: "facebook_insights", position: 5, size: "md" },
+  { tileType: "spotify", position: 6, size: "md" },
 ];
 
 export async function GET() {
@@ -16,7 +17,10 @@ export async function GET() {
     (def) => !existing.some((tile) => tile.tileType === def.tileType),
   );
   if (missing.length > 0) {
-    await db.tilePreference.createMany({ data: missing });
+    // skipDuplicates guards against a concurrent request (e.g. React's
+    // double-invoked effects in dev) seeding the same missing tileType
+    // first and hitting the table's unique constraint here instead.
+    await db.tilePreference.createMany({ data: missing, skipDuplicates: true });
     const withDefaults = await db.tilePreference.findMany({ orderBy: { position: "asc" } });
     return NextResponse.json({ tiles: withDefaults });
   }

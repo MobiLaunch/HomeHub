@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cloud, CloudRain, CloudSun, MapPin, Settings, Sun } from "lucide-react";
+import { Icon } from "@/components/Icon";
 
 type Weather = { temperature: number; code: number; location: string };
 
@@ -16,10 +16,10 @@ function greetingFor(hour: number) {
 }
 
 function weatherIcon(code: number) {
-  if (code === 0 || code === 1) return <Sun className="h-5 w-5" />;
-  if (code <= 3) return <CloudSun className="h-5 w-5" />;
-  if (code >= 51 && code <= 67) return <CloudRain className="h-5 w-5" />;
-  return <Cloud className="h-5 w-5" />;
+  if (code === 0 || code === 1) return <Icon name="clear_day" className="h-5 w-5" filled />;
+  if (code <= 3) return <Icon name="partly_cloudy_day" className="h-5 w-5" filled />;
+  if (code >= 51 && code <= 67) return <Icon name="rainy" className="h-5 w-5" filled />;
+  return <Icon name="cloud" className="h-5 w-5" filled />;
 }
 
 export function GreetingHeader({ householdName }: { householdName: string }) {
@@ -72,7 +72,7 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
               {weatherIcon(weather.code)}
               <div>
                 <p className="text-xl font-semibold leading-none">{weather.temperature}°F</p>
-                <p className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: "var(--ink-soft)" }}><MapPin className="h-3 w-3" />{weather.location}</p>
+                <p className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3" />{weather.location}</p>
               </div>
             </div>
           )}
@@ -80,7 +80,7 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
       </div>
       <Link href="/settings" aria-label="Settings">
         <motion.span whileHover={{ rotate: 75 }} whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 260, damping: 18 }} className="glass-pill flex h-11 w-11 shrink-0 items-center justify-center">
-          <Settings className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+          <Icon name="settings" className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
         </motion.span>
       </Link>
     </motion.header>

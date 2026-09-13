@@ -2,13 +2,17 @@
 
 import { motion } from "framer-motion";
 
-/** Abstract four-tile mark — echoes the dashboard's own tile grid. */
+/**
+ * Abstract four-tile mark — echoes the dashboard's own tile grid, one tile
+ * per M3 tonal color role (primary/secondary/tertiary/error), the same
+ * multi-hue "expressive" mix Google's own product marks use.
+ */
 export function HubMark({ size = 72 }: { size?: number }) {
   const tiles = [
-    { x: 0, y: 0, delay: 0 },
-    { x: 1, y: 0, delay: 0.08 },
-    { x: 0, y: 1, delay: 0.16 },
-    { x: 1, y: 1, delay: 0.24 },
+    { x: 0, y: 0, delay: 0, color: "var(--m3-primary)" },
+    { x: 1, y: 0, delay: 0.08, color: "var(--m3-secondary)" },
+    { x: 0, y: 1, delay: 0.16, color: "var(--m3-tertiary)" },
+    { x: 1, y: 1, delay: 0.24, color: "var(--m3-error)" },
   ];
   const gap = size * 0.12;
   const tile = (size - gap) / 2;
@@ -20,18 +24,15 @@ export function HubMark({ size = 72 }: { size?: number }) {
           key={i}
           initial={{ opacity: 0, scale: 0.4, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: t.delay, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="glass-strong"
+          transition={{ delay: t.delay, type: "spring", stiffness: 260, damping: 16 }}
           style={{
             position: "absolute",
             width: tile,
             height: tile,
             left: t.x * (tile + gap),
             top: t.y * (tile + gap),
-            background:
-              i === 0
-                ? "linear-gradient(135deg, var(--accent), #9c9bff)"
-                : undefined,
+            borderRadius: size * 0.22,
+            background: t.color,
           }}
         />
       ))}

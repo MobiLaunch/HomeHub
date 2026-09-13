@@ -176,6 +176,13 @@ export async function fetchIdentity(
         label: json.team ? `${json.team} (${json.user})` : "Slack workspace",
       };
     }
+    case "spotify": {
+      const res = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const json = await res.json();
+      return { externalAccountId: json.id, label: json.display_name ?? "Spotify account" };
+    }
     default:
       throw new Error(`fetchIdentity not supported for ${provider}`);
   }

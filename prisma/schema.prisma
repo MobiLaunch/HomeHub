@@ -28,6 +28,7 @@ enum IntegrationProvider {
   slack
   facebook
   apple
+  spotify
 }
 
 enum IntegrationStatus {

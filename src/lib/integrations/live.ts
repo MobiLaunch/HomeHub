@@ -45,6 +45,25 @@ export type FacebookPageInsights = {
   accountLabel: string;
 };
 
+export type SpotifyTrack = {
+  id: string;
+  name: string;
+  artists: string;
+  albumId: string;
+  albumName: string;
+  albumArtUrl: string | null;
+  durationMs: number;
+  externalUrl: string;
+};
+
+export type SpotifyNowPlaying = {
+  isPlaying: boolean;
+  progressMs: number | null;
+  track: SpotifyTrack;
+  albumTracks: SpotifyTrack[];
+  accountLabel: string;
+};
+
 async function markSynced(integrationId: string, error?: string) {
   await db.integration.update({
     where: { id: integrationId },
@@ -186,6 +205,31 @@ export async function fetchFacebookInsights(): Promise<FacebookPageInsights[]> {
   );
 
   return results.filter((r): r is FacebookPageInsights => r !== null);
+}
+
+export async function fetchSpotifyNowPlaying(): Promise<SpotifyNowPlaying[]> {
+  const integrations = await db.integration.findMany({
+    where: { provider: "spotify", status: { in: ["connected", "error"] } },
+  });
+
+  const results = await Promise.all(
+    integrations.map(async (integration) => {
+      try {
+        const token = await getValidAccessToken(integration);
+        if (!token) return null;
+        const nowPlaying = await fetchSpotifyCurrentOrRecentTrack(token);
+        if (!nowPlaying) return null;
+        const albumTracks = await fetchSpotifyAlbumTracks(nowPlaying.track.albumId, token);
+        await markSynced(integration.id);
+        return { ...nowPlaying, albumTracks, accountLabel: integration.label };
+      } catch (err) {
+        await markSynced(integration.id, (err as Error).message);
+        return null;
+      }
+    }),
+  );
+
+  return results.filter((r): r is SpotifyNowPlaying => r !== null);
 }
 
 // ---------------------------------------------------------------------------
@@ -567,4 +611,81 @@ function icsDateToIso(value: string): string {
   const mo = value.slice(4, 6);
   const d = value.slice(6, 8);
   return `${y}-${mo}-${d}`;
+}
+
+// ---------------------------------------------------------------------------
+// Spotify
+// ---------------------------------------------------------------------------
+
+type SpotifyApiTrack = {
+  id: string;
+  name: string;
+  duration_ms: number;
+  external_urls?: { spotify?: string };
+  artists?: { name: string }[];
+  album?: { id: string; name: string; images?: { url: string }[] };
+};
+
+function mapSpotifyTrack(track: SpotifyApiTrack): SpotifyTrack {
+  return {
+    id: track.id,
+    name: track.name,
+    artists: (track.artists ?? []).map((a) => a.name).join(", "),
+    albumId: track.album?.id ?? "",
+    albumName: track.album?.name ?? "",
+    albumArtUrl: track.album?.images?.[0]?.url ?? null,
+    durationMs: track.duration_ms,
+    externalUrl: track.external_urls?.spotify ?? "https://open.spotify.com",
+  };
+}
+
+/**
+ * Prefers whatever's actively playing right now; /me/player/currently-playing
+ * returns 204 with no body when nothing is playing (a free-tier Spotify
+ * account, or playback paused long enough to time out), so we degrade to the
+ * most recent track from /me/player/recently-played instead of showing an
+ * empty tile.
+ */
+async function fetchSpotifyCurrentOrRecentTrack(
+  accessToken: string,
+): Promise<{ isPlaying: boolean; progressMs: number | null; track: SpotifyTrack } | null> {
+  const nowRes = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (nowRes.status === 200) {
+    const json = await nowRes.json();
+    if (json?.item) {
+      return { isPlaying: Boolean(json.is_playing), progressMs: json.progress_ms ?? null, track: mapSpotifyTrack(json.item) };
+    }
+  } else if (nowRes.status !== 204 && !nowRes.ok) {
+    throw new Error(`Spotify currently-playing error: ${nowRes.status}`);
+  }
+
+  const recentRes = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=1", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!recentRes.ok) throw new Error(`Spotify recently-played error: ${recentRes.status}`);
+  const recentJson = await recentRes.json();
+  const item = recentJson.items?.[0]?.track;
+  if (!item) return null;
+  return { isPlaying: false, progressMs: null, track: mapSpotifyTrack(item) };
+}
+
+async function fetchSpotifyAlbumTracks(albumId: string, accessToken: string): Promise<SpotifyTrack[]> {
+  if (!albumId) return [];
+  const res = await fetch(`https://api.spotify.com/v1/albums/${albumId}/tracks?limit=10`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Spotify album tracks error: ${res.status}`);
+  const json = await res.json();
+  // Album-tracks responses omit each track's own `album` field — the art and
+  // album name are the same for every track here, so it's filled back in
+  // from the album id/tracks-list context the caller already has.
+  const albumRes = await fetch(`https://api.spotify.com/v1/albums/${albumId}?fields=name,images`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const album = albumRes.ok ? await albumRes.json() : null;
+  return ((json.items ?? []) as SpotifyApiTrack[]).map((track) =>
+    mapSpotifyTrack({ ...track, album: { id: albumId, name: album?.name, images: album?.images } }),
+  );
 }

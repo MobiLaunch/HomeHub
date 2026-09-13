@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import type { LiveMessage } from "@/lib/integrations/live";
 
@@ -66,7 +66,7 @@ function EmptyState({ text }: { text: string }) {
       animate={{ opacity: 1 }}
       className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center"
     >
-      <MessageSquare className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
+      <Icon name="forum" className="h-5 w-5" style={{ color: "var(--ink-soft)" }} />
       <p className="max-w-[220px] text-xs" style={{ color: "var(--ink-soft)" }}>
         {text}
       </p>

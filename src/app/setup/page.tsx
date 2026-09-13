@@ -5,16 +5,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { HubMark } from "@/components/HubMark";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
-import { CalendarDays, MessageSquare, Bell, StickyNote, Sparkles, Check } from "lucide-react";
+import { Icon } from "@/components/Icon";
 
 const STEP_LABELS = ["Welcome", "Your home", "Connect accounts", "Choose tiles", "Done"];
 
-const TILE_META: Record<string, { label: string; icon: typeof CalendarDays; hint: string }> = {
-  calendar: { label: "Calendar", icon: CalendarDays, hint: "Upcoming events across every connected calendar" },
-  messages: { label: "Messages", icon: MessageSquare, hint: "Recent Slack & Teams activity" },
-  notifications: { label: "Live activity", icon: Bell, hint: "A flippable stack of new messages, upcoming events, and reminders" },
-  notes: { label: "Notes", icon: StickyNote, hint: "Sticky notes anyone in the house can leave" },
-  stickers: { label: "Stickers", icon: Sparkles, hint: "A playful corkboard for the family" },
+const TILE_META: Record<string, { label: string; icon: string; hint: string }> = {
+  calendar: { label: "Calendar", icon: "calendar_month", hint: "Upcoming events across every connected calendar" },
+  messages: { label: "Messages", icon: "forum", hint: "Recent Slack & Teams activity" },
+  notifications: { label: "Live activity", icon: "notifications", hint: "A flippable stack of new messages, upcoming events, and reminders" },
+  notes: { label: "Notes", icon: "sticky_note_2", hint: "Sticky notes anyone in the house can leave" },
+  stickers: { label: "Stickers", icon: "auto_awesome", hint: "A playful corkboard for the family" },
+  facebook_insights: { label: "Page insights", icon: "thumb_up", hint: "Comments, Messenger activity, and stats for your Facebook Page" },
+  spotify: { label: "Now playing", icon: "graphic_eq", hint: "Whatever's playing on Spotify, with album art" },
 };
 
 function SetupWizard() {
@@ -95,7 +97,7 @@ function SetupWizard() {
             <motion.div
               animate={{
                 background: i <= step ? "var(--accent)" : "var(--glass-fill)",
-                color: i <= step ? "#ffffff" : "var(--ink-soft)",
+                color: i <= step ? "var(--on-accent)" : "var(--ink-soft)",
                 scale: i === step ? 1.15 : 1,
               }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -110,7 +112,7 @@ function SetupWizard() {
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 500, damping: 18 }}
                   >
-                    <Check className="h-3 w-3" />
+                    <Icon name="check" className="h-3 w-3" />
                   </motion.span>
                 ) : (
                   <motion.span key="num" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -219,7 +221,6 @@ function SetupWizard() {
                   {tiles.map((tile) => {
                     const meta = TILE_META[tile.tileType];
                     if (!meta) return null;
-                    const Icon = meta.icon;
                     return (
                       <motion.button
                         key={tile.tileType}
@@ -235,7 +236,7 @@ function SetupWizard() {
                         transition={{ duration: 0.2 }}
                         className="glass relative flex items-start gap-3 p-4 text-left"
                       >
-                        <Icon className="mt-0.5 h-5 w-5" style={{ color: "var(--accent)" }} />
+                        <Icon name={meta.icon} className="mt-0.5 h-5 w-5" style={{ color: "var(--accent)" }} />
                         <span>
                           <span className="block font-medium" style={{ color: "var(--ink)" }}>
                             {meta.label}
@@ -254,7 +255,7 @@ function SetupWizard() {
                               className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full"
                               style={{ background: "var(--accent)" }}
                             >
-                              <Check className="h-3 w-3 text-white" />
+                              <Icon name="check" className="h-3 w-3" style={{ color: "var(--on-accent)" }} />
                             </motion.span>
                           )}
                         </AnimatePresence>

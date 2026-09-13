@@ -5,18 +5,7 @@ import { mutate } from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLive } from "@/hooks/useLive";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
-import {
-  CalendarDays,
-  Building2,
-  Hash,
-  ThumbsUp,
-  Apple,
-  Link as LinkIcon,
-  Unlink,
-  LoaderCircle as LoaderIcon,
-  TriangleAlert,
-  RefreshCw,
-} from "lucide-react";
+import { Icon } from "@/components/Icon";
 
 type ProviderAccount = {
   id: string;
@@ -27,7 +16,7 @@ type ProviderAccount = {
 };
 
 type ProviderInfo = {
-  id: "google" | "microsoft" | "slack" | "facebook" | "apple";
+  id: "google" | "microsoft" | "slack" | "facebook" | "apple" | "spotify";
   displayName: string;
   description: string;
   authType: "oauth" | "credentials";
@@ -35,12 +24,13 @@ type ProviderInfo = {
   accounts: ProviderAccount[];
 };
 
-const ICONS: Record<ProviderInfo["id"], typeof CalendarDays> = {
-  google: CalendarDays,
-  microsoft: Building2,
-  slack: Hash,
-  facebook: ThumbsUp,
-  apple: Apple,
+const ICONS: Record<ProviderInfo["id"], string> = {
+  google: "calendar_month",
+  microsoft: "domain",
+  slack: "tag",
+  facebook: "thumb_up",
+  apple: "calendar_today",
+  spotify: "graphic_eq",
 };
 
 const INTEGRATIONS_URL = "/api/integrations";
@@ -62,7 +52,7 @@ export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings"
     return (
       <div className="glass flex flex-col items-start gap-2 p-4 text-sm" style={{ color: "var(--ink)" }}>
         <span className="flex items-center gap-2 font-medium">
-          <TriangleAlert className="h-4 w-4 text-rose-500" /> Couldn&apos;t load integrations
+          <Icon name="warning" className="h-4 w-4 text-rose-500" /> Couldn&apos;t load integrations
         </span>
         <span style={{ color: "var(--ink-soft)" }}>{error.message}</span>
         <button
@@ -70,7 +60,7 @@ export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings"
           className="glass-pill mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
           style={{ color: "var(--accent)" }}
         >
-          <RefreshCw className="h-3.5 w-3.5" /> Retry
+          <Icon name="refresh" className="h-3.5 w-3.5" /> Retry
         </button>
       </div>
     );
@@ -79,7 +69,7 @@ export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings"
   if (isLoading || !providers) {
     return (
       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--ink-soft)" }}>
-        <LoaderIcon className="h-4 w-4 animate-spin" /> Loading integrations…
+        <Icon name="progress_activity" className="h-4 w-4 animate-spin" /> Loading integrations…
       </div>
     );
   }
@@ -110,7 +100,7 @@ function ProviderCard({
   returnTo: "setup" | "settings";
   onDisconnect: (accountId: string) => void;
 }) {
-  const Icon = ICONS[provider.id];
+  const providerIcon = ICONS[provider.id];
   const { ref: glowRef, onPointerMove: glowMove, onPointerLeave: glowLeave } = usePointerGlow<HTMLDivElement>();
   const [appleForm, setAppleForm] = useState({ appleId: "", appPassword: "" });
   const [appleBusy, setAppleBusy] = useState(false);
@@ -154,7 +144,7 @@ function ProviderCard({
           whileHover={{ rotate: 6, scale: 1.08 }}
           transition={{ type: "spring", stiffness: 350, damping: 14 }}
         >
-          <Icon className="h-5 w-5" />
+          <Icon name={providerIcon} className="h-5 w-5" />
         </motion.div>
         <div className="min-w-0 flex-1">
           <p className="font-medium" style={{ color: "var(--ink)" }}>
@@ -190,7 +180,7 @@ function ProviderCard({
                   className="flex shrink-0 items-center gap-1 text-xs opacity-70 transition-colors hover:text-rose-500 hover:opacity-100"
                   style={{ color: "var(--ink-soft)" }}
                 >
-                  <Unlink className="h-3.5 w-3.5" />
+                  <Icon name="link_off" className="h-3.5 w-3.5" />
                   Disconnect
                 </button>
               </motion.li>
@@ -213,7 +203,7 @@ function ProviderCard({
           className="glass-pill relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium"
           style={{ color: "var(--accent)" }}
         >
-          <LinkIcon className="h-4 w-4" />
+          <Icon name="link" className="h-4 w-4" />
           Connect {provider.displayName}
         </motion.a>
       )}
@@ -250,7 +240,7 @@ function ProviderCard({
             className="glass-pill flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
             style={{ color: "var(--accent)" }}
           >
-            {appleBusy ? <LoaderIcon className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+            {appleBusy ? <Icon name="progress_activity" className="h-4 w-4 animate-spin" /> : <Icon name="link" className="h-4 w-4" />}
             Connect Apple Calendar
           </motion.button>
         </form>

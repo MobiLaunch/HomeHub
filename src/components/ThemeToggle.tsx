@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Icon } from "@/components/Icon";
 
 type Theme = "system" | "light" | "dark";
 const STORAGE_KEY = "homehub-theme";
@@ -32,22 +32,22 @@ export function ThemeToggle() {
     applyTheme(next);
   }
 
-  const options: { value: Theme; icon: typeof Sun; label: string }[] = [
-    { value: "light", icon: Sun, label: "Light" },
-    { value: "system", icon: Monitor, label: "System" },
-    { value: "dark", icon: Moon, label: "Dark" },
+  const options: { value: Theme; icon: string; label: string }[] = [
+    { value: "light", icon: "light_mode", label: "Light" },
+    { value: "system", icon: "desktop_windows", label: "System" },
+    { value: "dark", icon: "dark_mode", label: "Dark" },
   ];
 
   return (
     <div className="glass-pill relative inline-flex p-1">
-      {options.map(({ value, icon: Icon, label }) => {
+      {options.map(({ value, icon, label }) => {
         const active = theme === value;
         return (
           <button
             key={value}
             onClick={() => choose(value)}
             className="relative flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
-            style={{ color: active ? "white" : "var(--ink-soft)" }}
+            style={{ color: active ? "var(--on-accent)" : "var(--ink-soft)" }}
           >
             {active && (
               <motion.span
@@ -58,7 +58,7 @@ export function ThemeToggle() {
               />
             )}
             <span className="relative flex items-center gap-1.5">
-              <Icon className="h-3.5 w-3.5" />
+              <Icon name={icon} className="h-3.5 w-3.5" filled={active} />
               {label}
             </span>
           </button>

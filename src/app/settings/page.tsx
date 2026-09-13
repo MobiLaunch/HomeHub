@@ -4,19 +4,21 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CalendarDays, MessageSquare, Bell, StickyNote, Sparkles, Check } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePointerGlow } from "@/hooks/usePointerGlow";
 
 type TilePref = { tileType: string; enabled: boolean };
 
-const TILE_META: Record<string, { label: string; icon: typeof CalendarDays }> = {
-  calendar: { label: "Calendar", icon: CalendarDays },
-  messages: { label: "Messages", icon: MessageSquare },
-  notifications: { label: "Live activity", icon: Bell },
-  notes: { label: "Notes", icon: StickyNote },
-  stickers: { label: "Stickers", icon: Sparkles },
+const TILE_META: Record<string, { label: string; icon: string }> = {
+  calendar: { label: "Calendar", icon: "calendar_month" },
+  messages: { label: "Messages", icon: "forum" },
+  notifications: { label: "Live activity", icon: "notifications" },
+  notes: { label: "Notes", icon: "sticky_note_2" },
+  stickers: { label: "Stickers", icon: "auto_awesome" },
+  facebook_insights: { label: "Page insights", icon: "thumb_up" },
+  spotify: { label: "Now playing", icon: "graphic_eq" },
 };
 
 function SettingsBanner() {
@@ -100,7 +102,7 @@ export default function SettingsPage() {
             whileTap={{ scale: 0.9 }}
             className="glass-pill flex h-9 w-9 items-center justify-center"
           >
-            <ArrowLeft className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
+            <Icon name="arrow_back" className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
           </motion.span>
         </Link>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
@@ -152,7 +154,7 @@ export default function SettingsPage() {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-1 text-xs text-emerald-500"
               >
-                <Check className="h-3 w-3" /> Saved
+                <Icon name="check" className="h-3 w-3" /> Saved
               </motion.p>
             )}
           </AnimatePresence>
@@ -178,7 +180,6 @@ export default function SettingsPage() {
           {(tiles ?? []).map((tile) => {
             const meta = TILE_META[tile.tileType];
             if (!meta) return null;
-            const Icon = meta.icon;
             return (
               <motion.button
                 key={tile.tileType}
@@ -193,7 +194,7 @@ export default function SettingsPage() {
                   animate={{ rotate: tile.enabled ? 0 : -20, scale: tile.enabled ? 1 : 0.9 }}
                   transition={{ type: "spring", stiffness: 400, damping: 16 }}
                 >
-                  <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                  <Icon name={meta.icon} className="h-4 w-4" style={{ color: "var(--accent)" }} />
                 </motion.span>
                 {meta.label}
               </motion.button>

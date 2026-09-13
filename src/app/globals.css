@@ -1,52 +1,149 @@
 @import "tailwindcss";
 
+/*
+ * Material 3 Expressive tokens. Four seed hues (blue/green/amber/red — the
+ * Google brand palette) each get a light tonal pair (color + container) so
+ * different tiles/providers can carry their own accent while still reading
+ * as one system. Surfaces are solid tonal fills with elevation shadows —
+ * no translucency/blur — per M3's "expressive" surface treatment.
+ */
 :root {
-  --bg-0: #eef1f8;
-  --bg-1: #dfe6f5;
-  --ink: #14161f;
-  --ink-soft: rgba(20, 22, 31, 0.62);
-  --glass-fill: rgba(255, 255, 255, 0.46);
-  --glass-fill-strong: rgba(255, 255, 255, 0.68);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-highlight: rgba(255, 255, 255, 0.9);
-  --glass-shadow: rgba(30, 40, 80, 0.16);
-  --accent: #6d6bff;
-  --accent-soft: rgba(109, 107, 255, 0.16);
-  /* Tinted (not white) so the pointer-glow shows up against an
-     already-light glass surface — plain white-on-white has no contrast. */
-  --glow-color: rgba(109, 107, 255, 0.4);
+  --m3-primary: #0b57d0;
+  --m3-on-primary: #ffffff;
+  --m3-primary-container: #d3e3fd;
+  --m3-on-primary-container: #041e49;
+
+  --m3-secondary: #1e8e3e;
+  --m3-on-secondary: #ffffff;
+  --m3-secondary-container: #d7f8dc;
+  --m3-on-secondary-container: #0a3818;
+
+  --m3-tertiary: #b5610a;
+  --m3-on-tertiary: #ffffff;
+  --m3-tertiary-container: #ffe8c8;
+  --m3-on-tertiary-container: #3a2500;
+
+  --m3-error: #d93025;
+  --m3-on-error: #ffffff;
+  --m3-error-container: #fddad6;
+  --m3-on-error-container: #410e0b;
+
+  --m3-surface: #f8f9ff;
+  --m3-surface-container-lowest: #ffffff;
+  --m3-surface-container-low: #f2f3fb;
+  --m3-surface-container: #eceef7;
+  --m3-surface-container-high: #e6e8f2;
+  --m3-surface-container-highest: #e0e2ec;
+  --m3-on-surface: #1a1c1e;
+  --m3-on-surface-variant: #44474e;
+  --m3-outline: #74777f;
+  --m3-outline-variant: #c4c6cf;
+
+  /* Semantic aliases — most components read these, not the --m3-* tokens
+     directly, so the whole app repaints from one place. */
+  --bg-0: var(--m3-surface);
+  --bg-1: var(--m3-surface-container);
+  --ink: var(--m3-on-surface);
+  --ink-soft: var(--m3-on-surface-variant);
+  --accent: var(--m3-primary);
+  --accent-soft: var(--m3-primary-container);
+  --on-accent: var(--m3-on-primary);
+  --outline: var(--m3-outline-variant);
+
+  --surface-card: var(--m3-surface-container-low);
+  --surface-card-strong: var(--m3-surface-container-high);
+  --surface-pill: var(--m3-surface-container-highest);
+
+  /* Back-compat aliases for existing inline styles (chip/row backgrounds,
+     dividers) written against the old glass system's variable names. */
+  --glass-fill: var(--m3-surface-container);
+  --glass-fill-strong: var(--surface-card-strong);
+  --glass-border: var(--outline);
+
+  /* Pointer-tracked hover tint — an M3 "state layer" (flat, low-opacity
+     primary tint) rather than a specular glass highlight. */
+  --glow-color: rgba(11, 87, 208, 0.1);
+
+  --shape-sm: 12px;
+  --shape-md: 16px;
+  --shape-lg: 20px;
+  --shape-xl: 28px;
+
+  --elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 1px 3px 1px rgba(0, 0, 0, 0.1);
+  --elevation-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 2px 6px 2px rgba(0, 0, 0, 0.1);
+  --elevation-3: 0px 1px 3px 0px rgba(0, 0, 0, 0.26), 0px 4px 8px 3px rgba(0, 0, 0, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-0: #05060c;
-    --bg-1: #0d1120;
-    --ink: #f4f5fb;
-    --ink-soft: rgba(244, 245, 251, 0.66);
-    --glass-fill: rgba(255, 255, 255, 0.07);
-    --glass-fill-strong: rgba(255, 255, 255, 0.12);
-    --glass-border: rgba(255, 255, 255, 0.16);
-    --glass-highlight: rgba(255, 255, 255, 0.28);
-    --glass-shadow: rgba(0, 0, 0, 0.45);
-    --accent: #9c9bff;
-    --accent-soft: rgba(156, 155, 255, 0.22);
-    --glow-color: rgba(255, 255, 255, 0.55);
+    --m3-primary: #a8c7fa;
+    --m3-on-primary: #062e6f;
+    --m3-primary-container: #0842a0;
+    --m3-on-primary-container: #d3e3fd;
+
+    --m3-secondary: #6dd58c;
+    --m3-on-secondary: #0a3818;
+    --m3-secondary-container: #0f5223;
+    --m3-on-secondary-container: #d7f8dc;
+
+    --m3-tertiary: #ffb951;
+    --m3-on-tertiary: #3a2500;
+    --m3-tertiary-container: #5c3d00;
+    --m3-on-tertiary-container: #ffe8c8;
+
+    --m3-error: #ffb4a9;
+    --m3-on-error: #690b00;
+    --m3-error-container: #8c1d13;
+    --m3-on-error-container: #fddad6;
+
+    --m3-surface: #111318;
+    --m3-surface-container-lowest: #0c0e13;
+    --m3-surface-container-low: #1a1c22;
+    --m3-surface-container: #1e2027;
+    --m3-surface-container-high: #282a31;
+    --m3-surface-container-highest: #33353c;
+    --m3-on-surface: #e2e2e9;
+    --m3-on-surface-variant: #c4c6d0;
+    --m3-outline: #8e9099;
+    --m3-outline-variant: #44474e;
+
+    --glow-color: rgba(168, 199, 250, 0.14);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg-0: #05060c;
-  --bg-1: #0d1120;
-  --ink: #f4f5fb;
-  --ink-soft: rgba(244, 245, 251, 0.66);
-  --glass-fill: rgba(255, 255, 255, 0.07);
-  --glass-fill-strong: rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(255, 255, 255, 0.16);
-  --glass-highlight: rgba(255, 255, 255, 0.28);
-  --glass-shadow: rgba(0, 0, 0, 0.45);
-  --accent: #9c9bff;
-  --accent-soft: rgba(156, 155, 255, 0.22);
-  --glow-color: rgba(255, 255, 255, 0.55);
+  --m3-primary: #a8c7fa;
+  --m3-on-primary: #062e6f;
+  --m3-primary-container: #0842a0;
+  --m3-on-primary-container: #d3e3fd;
+
+  --m3-secondary: #6dd58c;
+  --m3-on-secondary: #0a3818;
+  --m3-secondary-container: #0f5223;
+  --m3-on-secondary-container: #d7f8dc;
+
+  --m3-tertiary: #ffb951;
+  --m3-on-tertiary: #3a2500;
+  --m3-tertiary-container: #5c3d00;
+  --m3-on-tertiary-container: #ffe8c8;
+
+  --m3-error: #ffb4a9;
+  --m3-on-error: #690b00;
+  --m3-error-container: #8c1d13;
+  --m3-on-error-container: #fddad6;
+
+  --m3-surface: #111318;
+  --m3-surface-container-lowest: #0c0e13;
+  --m3-surface-container-low: #1a1c22;
+  --m3-surface-container: #1e2027;
+  --m3-surface-container-high: #282a31;
+  --m3-surface-container-highest: #33353c;
+  --m3-on-surface: #e2e2e9;
+  --m3-on-surface-variant: #c4c6d0;
+  --m3-outline: #8e9099;
+  --m3-outline-variant: #44474e;
+
+  --glow-color: rgba(168, 199, 250, 0.14);
 }
 
 @theme inline {
@@ -67,47 +164,44 @@ body {
 body {
   background: var(--bg-0);
   color: var(--ink);
-  font-family: var(--font-display), -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "Inter", "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-display), "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 }
 
-/* Slowly drifting aurora field behind the whole app — the "liquid" backdrop
-   the glass tiles float over. Fixed + behind everything via z-index. */
+/* Soft, low-saturation color wash behind the whole app — expressive but
+   sitting *behind* opaque M3 surfaces now, rather than showing through
+   translucent glass tiles. */
 .aurora-field {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(circle at 15% 20%, var(--bg-1), transparent 60%),
-    radial-gradient(circle at 85% 15%, rgba(109, 107, 255, 0.25), transparent 55%),
-    radial-gradient(circle at 75% 80%, rgba(255, 130, 190, 0.18), transparent 55%),
-    radial-gradient(circle at 20% 85%, rgba(90, 200, 250, 0.2), transparent 55%),
-    var(--bg-0);
+  background: var(--bg-0);
 }
 
 .aurora-field::before,
 .aurora-field::after {
   content: "";
   position: absolute;
-  width: 60vmax;
-  height: 60vmax;
+  width: 55vmax;
+  height: 55vmax;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.55;
-  animation: drift 34s ease-in-out infinite alternate;
+  filter: blur(120px);
+  opacity: 0.22;
+  animation: drift 38s ease-in-out infinite alternate;
 }
 
 .aurora-field::before {
-  top: -20%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(109, 107, 255, 0.35), transparent 70%);
+  top: -18%;
+  left: -12%;
+  background: radial-gradient(circle, var(--m3-primary), transparent 70%);
 }
 
 .aurora-field::after {
-  bottom: -25%;
-  right: -15%;
-  background: radial-gradient(circle, rgba(255, 145, 200, 0.28), transparent 70%);
-  animation-duration: 42s;
+  bottom: -22%;
+  right: -14%;
+  background: radial-gradient(circle, var(--m3-tertiary), transparent 70%);
+  animation-duration: 46s;
   animation-delay: -8s;
 }
 
@@ -116,10 +210,10 @@ body {
     transform: translate(0, 0) scale(1);
   }
   50% {
-    transform: translate(6%, 8%) scale(1.08);
+    transform: translate(5%, 6%) scale(1.06);
   }
   100% {
-    transform: translate(-4%, -6%) scale(0.97);
+    transform: translate(-4%, -5%) scale(0.97);
   }
 }
 
@@ -130,53 +224,35 @@ body {
   }
 }
 
-/* Liquid Glass tile surface: translucent, blurred, top-edge highlight,
-   soft floating shadow, plus a diagonal specular sheen layered directly
-   into the background (no pseudo-element, so it can't fight any element's
-   own `position` utility — see `.glow` below for why that matters). */
+/* M3 surface container: solid tonal fill + elevation shadow, no blur. Same
+   class names as the old glass system so every existing component keeps
+   working with zero changes. */
 .glass {
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.4) 4%, transparent 26%, transparent 74%, rgba(255, 255, 255, 0.14) 96%),
-    var(--glass-fill);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  box-shadow:
-    0 1px 0 0 var(--glass-highlight) inset,
-    0 1px 24px 0 var(--glass-shadow);
-  border-radius: 28px;
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
+  background: var(--surface-card);
+  border: 1px solid var(--outline);
+  box-shadow: var(--elevation-1);
+  border-radius: var(--shape-xl);
+  transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.4, 1), box-shadow 0.25s ease, background-color 0.25s ease;
 }
 
 .glass-strong {
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.45) 4%, transparent 26%, transparent 74%, rgba(255, 255, 255, 0.16) 96%),
-    var(--glass-fill-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
-  box-shadow:
-    0 1px 0 0 var(--glass-highlight) inset,
-    0 8px 40px 0 var(--glass-shadow);
-  border-radius: 28px;
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
+  background: var(--surface-card-strong);
+  border: 1px solid var(--outline);
+  box-shadow: var(--elevation-2);
+  border-radius: var(--shape-xl);
+  transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.4, 1), box-shadow 0.25s ease, background-color 0.25s ease;
 }
 
 .glass-pill {
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.4) 6%, transparent 40%),
-    var(--glass-fill-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: var(--surface-pill);
+  border: 1px solid var(--outline);
   border-radius: 999px;
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, filter 0.18s ease;
+  transition: transform 0.15s cubic-bezier(0.3, 0.7, 0.4, 1), box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .glass-pill:hover {
-  filter: brightness(1.06);
+  box-shadow: var(--elevation-1);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px 0 var(--glass-shadow);
 }
 
 .glass-pill:active {
@@ -184,12 +260,10 @@ body {
   transition-duration: 0.08s;
 }
 
-/* Opt-in cursor-tracked specular highlight. Only applied to elements that
-   don't rely on their own `position: absolute/fixed` utility (e.g. the
-   fanned notification cards) — this rule's `position: relative` would
-   otherwise fight Tailwind's positioning utility, since Tailwind's own
-   utilities live inside a lower-precedence @layer and would lose that
-   battle regardless of source order. */
+/* Pointer-tracked M3 "state layer" — a flat, low-opacity primary-tinted
+   hover tint (per M3 interaction states) rather than a specular sheen.
+   Kept as the same `.glow`/`.glow-overlay` hook so existing components
+   (and the usePointerGlow hook driving them) need no changes. */
 .glow {
   position: relative;
   overflow: hidden;
@@ -198,40 +272,35 @@ body {
 .glow::before {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: 3;
   opacity: var(--glow-o, 0);
   background: radial-gradient(
-    260px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    320px circle at var(--glow-x, 50%) var(--glow-y, 50%),
     var(--glow-color),
-    transparent 62%
+    transparent 70%
   );
-  transition: opacity 0.5s ease;
+  transition: opacity 0.4s ease;
   pointer-events: none;
   border-radius: inherit;
 }
 
 .glow:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 36px 0 var(--glass-shadow);
+  box-shadow: var(--elevation-3);
 }
 
-/* Same specular highlight as `.glow::before`, but as a standalone element
-   for surfaces that must keep their own `position: absolute` (like the
-   fanned notification cards) rather than getting it from `.glow`. CSS
-   custom properties set on the parent (via usePointerGlow) inherit down
-   to this child automatically. */
 .glow-overlay {
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: 3;
   opacity: var(--glow-o, 0);
   background: radial-gradient(
-    260px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+    320px circle at var(--glow-x, 50%) var(--glow-y, 50%),
     var(--glow-color),
-    transparent 62%
+    transparent 70%
   );
-  transition: opacity 0.5s ease;
+  transition: opacity 0.4s ease;
   pointer-events: none;
   border-radius: inherit;
 }
@@ -259,9 +328,62 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--glass-border);
+  background: var(--outline);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Spinning vinyl record overlay for the Spotify widget's album art. */
+.spotify-record {
+  background: repeating-radial-gradient(
+    circle at center,
+    #1a1a1a 0px,
+    #1a1a1a 1.5px,
+    #333 2px,
+    #333 3px
+  );
+  box-shadow: var(--elevation-2);
+  animation: spin-record 3s linear infinite;
+}
+
+@keyframes spin-record {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotify-record {
+    animation: none;
+  }
+}
+
+/* Material Symbols icon font — ligature-driven, sized/weighted via
+   font-variation-settings rather than swapping SVGs. See Icon.tsx.
+   Self-hosted (rather than a fonts.googleapis.com <link>) for the same
+   reason next/font self-hosts Google Sans: no third-party request at
+   render time, and no external-CDN dependency for a production app. */
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url("/fonts/material-symbols-rounded.woff2") format("woff2");
+}
+
+.material-symbols-rounded {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
 }

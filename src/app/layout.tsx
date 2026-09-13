@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Google_Sans } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const googleSans = Google_Sans({
   variable: "--font-display",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${googleSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

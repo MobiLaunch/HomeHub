@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarDays, Clock3, MapPin } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import type { CalendarEvent } from "@/lib/integrations/live";
 
@@ -66,9 +66,9 @@ export function CalendarTile() {
                 <div className="space-y-2">
                   {dayEvents.map((event) => (
                     <motion.article key={event.id} layout whileHover={{ x: 2 }} className="group grid grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 sm:grid-cols-[5.5rem_1fr]" style={{ background: "var(--glass-fill-strong)" }}>
-                      <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
+                      <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
                       <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
-                        <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><MapPin className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
+                        <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
                       </div>
                     </motion.article>
                   ))}
@@ -83,5 +83,5 @@ export function CalendarTile() {
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-56 flex-col items-center justify-center gap-3 text-center"><CalendarDays className="h-7 w-7" style={{ color: "var(--ink-soft)" }} /><p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>{text}</p></motion.div>;
+  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-56 flex-col items-center justify-center gap-3 text-center"><Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} /><p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>{text}</p></motion.div>;
 }

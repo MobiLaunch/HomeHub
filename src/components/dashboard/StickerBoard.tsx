@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { mutate } from "swr";
 
@@ -155,7 +155,7 @@ export function StickerBoard() {
           className="glass-pill flex h-9 w-9 items-center justify-center"
           aria-label="Add sticker"
         >
-          <Plus className="h-4 w-4" style={{ color: "var(--accent)" }} />
+          <Icon name="add" className="h-4 w-4" style={{ color: "var(--accent)" }} />
         </motion.button>
       </div>
 
