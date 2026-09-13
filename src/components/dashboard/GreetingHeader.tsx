@@ -27,6 +27,9 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
   const [weather, setWeather] = useState<Weather | null>(null);
 
   useEffect(() => {
+    // Real-time clock: the initial tick has to happen after mount to avoid
+    // a server/client hydration mismatch on the rendered time.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000 * 30);
     return () => clearInterval(id);
