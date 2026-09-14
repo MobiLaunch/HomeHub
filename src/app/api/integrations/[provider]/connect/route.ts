@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { PROVIDERS, isOAuthProvider } from "@/lib/integrations/registry";
+import { PROVIDERS, isOAuthProvider, isProviderConfigured } from "@/lib/integrations/registry";
 import { buildAuthorizeUrl, generateState, OAUTH_STATE_COOKIE_PREFIX } from "@/lib/integrations/oauth";
 import type { IntegrationProvider } from "@/generated/prisma/enums";
 
@@ -16,6 +16,16 @@ export async function GET(
 
   const requestUrl = new URL(request.url);
   const from = requestUrl.searchParams.get("from") === "setup" ? "setup" : "settings";
+
+  // Provider credentials belong to the HomeHub deployment, not to the person
+  // using it. Never expose environment-variable names or secret fields in the
+  // customer-facing settings UI.
+  if (!isProviderConfigured(config)) {
+    const destination = new URL(from === "setup" ? "/setup" : "/settings", requestUrl.origin);
+    destination.searchParams.set("error", `${config.displayName} is not enabled on this HomeHub deployment yet.`);
+    return NextResponse.redirect(destination);
+  }
+
   const state = generateState();
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
