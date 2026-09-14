@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createCalendarEvent, deleteCalendarEvent, fetchCalendarEvents } from "@/lib/integrations/live";
 import type { CalendarEvent } from "@/lib/integrations/live";
+import { enrichGoogleCalendarEvents } from "@/lib/integrations/google-calendar";
 
 export async function GET() {
   const events = await fetchCalendarEvents();
-  return NextResponse.json({ events });
+  const enrichedEvents = await enrichGoogleCalendarEvents(events);
+  return NextResponse.json({ events: enrichedEvents });
 }
 
 export async function POST(request: Request) {
