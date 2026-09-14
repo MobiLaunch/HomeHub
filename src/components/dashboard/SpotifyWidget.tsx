@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
-import type { SpotifyNowPlaying, SpotifyTrack } from "@/lib/integrations/live";
+import type { SpotifyNowPlaying, SpotifyTrack } from "@/lib/integrations/spotify-live";
 
 function formatDuration(ms: number) {
   const totalSeconds = Math.round(ms / 1000);
@@ -21,9 +21,6 @@ export function SpotifyWidget() {
   const current = data?.nowPlaying?.[0];
   const isPlayingNow = Boolean(current?.isPlaying);
 
-  // Actively playing music is the whole point of this tile being on the
-  // dashboard at all — worth surfacing bigger and higher than a tile that's
-  // just sitting on a track someone finished listening to an hour ago.
   useReportActivity("spotify", isPlayingNow ? 100 : 0, isPlayingNow);
 
   if (isLoading && !current) {
@@ -51,9 +48,6 @@ export function SpotifyWidget() {
           ) : (
             <div className="h-16 w-16 rounded-xl" style={{ background: "var(--surface-pill)" }} />
           )}
-          {/* Spinning vinyl record, peeking out from behind the album art —
-              spins while playing, frozen mid-spin (not hidden) once paused
-              so it still reads as "a record", just resting. */}
           <div
             className="spotify-record absolute -right-3 -top-3 h-10 w-10 rounded-full"
             style={{ animationPlayState: isPlaying ? "running" : "paused" }}
@@ -84,7 +78,7 @@ export function SpotifyWidget() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 1, 1] }}
             className="overflow-hidden"
           >
             <p className="mb-1.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
@@ -104,6 +98,23 @@ export function SpotifyWidget() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="flex items-center justify-between gap-2 border-t pt-2" style={{ borderColor: "var(--glass-border)" }}>
+        <span className="text-[10px]" style={{ color: "var(--ink-soft)" }}>
+          Music from
+        </span>
+        <a
+          href={track.externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition-transform active:scale-95"
+          style={{ color: "var(--ink)" }}
+          aria-label="Open this track on Spotify"
+        >
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1db954] text-[9px] text-white" aria-hidden="true">●</span>
+          Spotify
+        </a>
+      </div>
     </div>
   );
 }
