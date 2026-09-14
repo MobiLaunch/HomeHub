@@ -46,12 +46,12 @@ export function createSpotifyState(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export function buildSpotifyAuthorizeUrl(state: string, verifier: string): string {
+export function buildSpotifyAuthorizeUrl(state: string, verifier: string, redirectUri = spotifyRedirectUri()): string {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: spotifyClientId(),
     scope: SPOTIFY_SCOPES.join(" "),
-    redirect_uri: spotifyRedirectUri(),
+    redirect_uri: redirectUri,
     state,
     code_challenge_method: "S256",
     code_challenge: createPkceChallenge(verifier),
@@ -84,12 +84,12 @@ function spotifyErrorMessage(status: number, body: Record<string, unknown>): str
   return `Spotify returned ${status}${error ? ` (${error})` : ""}: ${description ?? message ?? "Unknown error"}`;
 }
 
-export async function exchangeSpotifyCode(code: string, verifier: string): Promise<SpotifyTokenResponse> {
+export async function exchangeSpotifyCode(code: string, verifier: string, redirectUri = spotifyRedirectUri()): Promise<SpotifyTokenResponse> {
   const body = new URLSearchParams({
     client_id: spotifyClientId(),
     grant_type: "authorization_code",
     code,
-    redirect_uri: spotifyRedirectUri(),
+    redirect_uri: redirectUri,
     code_verifier: verifier,
   });
 
