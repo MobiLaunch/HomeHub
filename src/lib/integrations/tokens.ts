@@ -23,28 +23,38 @@ export async function getValidAccessToken(integration: Integration): Promise<str
 
   try {
     const refreshToken = decryptSecret(integration.refreshTokenEnc);
-    const refreshed = integration.provider === "spotify"
+    const accessToken = integration.provider === "spotify"
       ? await refreshSpotifyAccessToken(refreshToken)
       : await refreshAccessToken(configFor(integration.provider), refreshToken);
+
+    const normalized = integration.provider === "spotify"
+      ? {
+          accessToken: accessToken.access_token!,
+          refreshToken: accessToken.refresh_token,
+          expiresInSeconds: accessToken.expires_in,
+        }
+      : {
+          accessToken: accessToken.accessToken,
+          refreshToken: accessToken.refreshToken,
+          expiresInSeconds: accessToken.expiresInSeconds,
+        };
 
     await db.integration.update({
       where: { id: integration.id },
       data: {
-        accessTokenEnc: encryptSecret(refreshed.access_token ?? refreshed.accessToken),
-        refreshTokenEnc: refreshed.refresh_token
-          ? encryptSecret(refreshed.refresh_token)
-          : refreshed.refreshToken
-            ? encryptSecret(refreshed.refreshToken)
-            : undefined,
-        tokenExpiresAt: (refreshed.expires_in ?? refreshed.expiresInSeconds)
-          ? new Date(Date.now() + (refreshed.expires_in ?? refreshed.expiresInSeconds)! * 1000)
+        accessTokenEnc: encryptSecret(normalized.accessToken),
+        refreshTokenEnc: normalized.refreshToken
+          ? encryptSecret(normalized.refreshToken)
+          : undefined,
+        tokenExpiresAt: normalized.expiresInSeconds
+          ? new Date(Date.now() + normalized.expiresInSeconds * 1000)
           : null,
         status: "connected",
         lastError: null,
       },
     });
 
-    return refreshed.access_token ?? refreshed.accessToken;
+    return normalized.accessToken;
   } catch (err) {
     await db.integration.update({
       where: { id: integration.id },
