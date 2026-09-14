@@ -27,6 +27,10 @@ function timeLabel(event: CalendarEvent) {
   return new Date(event.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+function mapsUrl(location: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+}
+
 export function AgendaView({
   events,
   onSelect,
@@ -34,9 +38,6 @@ export function AgendaView({
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
 }) {
-  // Wall-clock recency check, not derived render state — expected to read
-  // differently on each poll/re-render as events pass.
-  // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   const upcoming = events.filter((e) => new Date(e.end ?? e.start).getTime() >= cutoff).slice(0, 30);
 
@@ -45,12 +46,13 @@ export function AgendaView({
       <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
         <Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} />
         <p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>
-          No upcoming events. Connect Google or Apple Calendar in Settings, or add one with the button above.
+          No upcoming events. Connect a calendar in Settings, or add one with the button above.
         </p>
       </div>
     );
   }
 
+  const nextEvent = upcoming.find((event) => new Date(event.start).getTime() >= Date.now());
   const grouped = upcoming.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
     const key = dayKey(event.start);
     (groups[key] ??= []).push(event);
@@ -59,36 +61,68 @@ export function AgendaView({
   const days = Object.entries(grouped);
 
   return (
-    <div className="max-h-[52vh] overflow-y-auto pr-1 sm:max-h-[560px]">
-      <div className="space-y-5">
-        <AnimatePresence initial={false}>
-          {days.map(([key, dayEvents], dayIndex) => (
-            <motion.section key={key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: dayIndex * 0.03 }}>
-              <div className="sticky top-0 z-10 mb-2 flex items-center gap-3 py-1" style={{ background: "var(--glass-fill)" }}>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{dayLabel(dayEvents[0].start)}</h3>
-                <span className="h-px flex-1" style={{ background: "var(--glass-border)" }} />
-                <span className="text-xs" style={{ color: "var(--ink-soft)" }}>{dayEvents.length}</span>
-              </div>
-              <div className="space-y-2">
-                {dayEvents.map((event) => (
-                  <motion.button
-                    key={event.id}
-                    layout
-                    onClick={() => onSelect(event)}
-                    whileHover={{ x: 2 }}
-                    className="group grid w-full grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 text-left sm:grid-cols-[5.5rem_1fr]"
-                    style={{ background: "var(--glass-fill-strong)" }}
-                  >
-                    <div className="pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }}><div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div></div>
-                    <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
-                      <div className="flex items-start gap-2"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p><p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>{event.location && <p className="mt-1 flex items-center gap-1 truncate text-xs" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}</p>}</div></div>
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.section>
-          ))}
-        </AnimatePresence>
+    <div className="space-y-4">
+      {nextEvent && (
+        <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--accent-soft)" }}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+            <Icon name="schedule" className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--accent)" }}>Next up</p>
+            <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{nextEvent.title}</p>
+          </div>
+          <span className="ml-auto shrink-0 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{timeLabel(nextEvent)}</span>
+        </div>
+      )}
+
+      <div className="max-h-[52vh] overflow-y-auto pr-1 sm:max-h-[560px]">
+        <div className="space-y-5">
+          <AnimatePresence initial={false}>
+            {days.map(([key, dayEvents], dayIndex) => (
+              <motion.section key={key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: dayIndex * 0.03 }}>
+                <div className="sticky top-0 z-10 mb-2 flex items-center gap-3 py-1" style={{ background: "var(--glass-fill)" }}>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{dayLabel(dayEvents[0].start)}</h3>
+                  <span className="h-px flex-1" style={{ background: "var(--glass-border)" }} />
+                  <span className="text-xs" style={{ color: "var(--ink-soft)" }}>{dayEvents.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {dayEvents.map((event) => (
+                    <motion.div
+                      key={event.id}
+                      layout
+                      whileHover={{ x: 2 }}
+                      className="group grid w-full grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 text-left sm:grid-cols-[5.5rem_1fr]"
+                      style={{ background: "var(--glass-fill-strong)" }}
+                    >
+                      <button onClick={() => onSelect(event)} className="text-left pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }} aria-label={`Open ${event.title}`}>
+                        <div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div>
+                      </button>
+                      <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
+                        <div className="flex items-start gap-2">
+                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: event.source === "google" ? "var(--accent)" : "var(--ink-soft)" }} />
+                          <div className="min-w-0 flex-1">
+                            <button onClick={() => onSelect(event)} className="block w-full text-left">
+                              <p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p>
+                              <p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>
+                            </button>
+                            {event.location && (
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex min-w-0 items-center gap-1 truncate text-xs hover:underline" style={{ color: "var(--ink-soft)" }}>
+                                  <Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}
+                                </a>
+                                <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Directions</a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.section>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
