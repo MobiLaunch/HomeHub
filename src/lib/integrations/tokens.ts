@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { configFor, refreshAccessToken } from "./oauth";
+import { refreshSpotifyAccessToken } from "./spotify";
 import type { Integration } from "@/generated/prisma/client";
 
 const EXPIRY_SAFETY_MARGIN_MS = 60_000;
@@ -17,33 +18,33 @@ export async function getValidAccessToken(integration: Integration): Promise<str
   const expiresAt = integration.tokenExpiresAt;
   const isExpired = expiresAt ? expiresAt.getTime() - EXPIRY_SAFETY_MARGIN_MS < Date.now() : false;
 
-  if (!isExpired) {
-    return decryptSecret(integration.accessTokenEnc);
-  }
-
-  if (!integration.refreshTokenEnc) {
-    // No refresh token available (e.g. Slack tokens don't expire by default)
-    // — treat the stored token as still usable.
-    return decryptSecret(integration.accessTokenEnc);
-  }
+  if (!isExpired) return decryptSecret(integration.accessTokenEnc);
+  if (!integration.refreshTokenEnc) return decryptSecret(integration.accessTokenEnc);
 
   try {
-    const config = configFor(integration.provider);
     const refreshToken = decryptSecret(integration.refreshTokenEnc);
-    const refreshed = await refreshAccessToken(config, refreshToken);
+    const refreshed = integration.provider === "spotify"
+      ? await refreshSpotifyAccessToken(refreshToken)
+      : await refreshAccessToken(configFor(integration.provider), refreshToken);
+
     await db.integration.update({
       where: { id: integration.id },
       data: {
-        accessTokenEnc: encryptSecret(refreshed.accessToken),
-        refreshTokenEnc: refreshed.refreshToken ? encryptSecret(refreshed.refreshToken) : undefined,
-        tokenExpiresAt: refreshed.expiresInSeconds
-          ? new Date(Date.now() + refreshed.expiresInSeconds * 1000)
+        accessTokenEnc: encryptSecret(refreshed.access_token ?? refreshed.accessToken),
+        refreshTokenEnc: refreshed.refresh_token
+          ? encryptSecret(refreshed.refresh_token)
+          : refreshed.refreshToken
+            ? encryptSecret(refreshed.refreshToken)
+            : undefined,
+        tokenExpiresAt: (refreshed.expires_in ?? refreshed.expiresInSeconds)
+          ? new Date(Date.now() + (refreshed.expires_in ?? refreshed.expiresInSeconds)! * 1000)
           : null,
         status: "connected",
         lastError: null,
       },
     });
-    return refreshed.accessToken;
+
+    return refreshed.access_token ?? refreshed.accessToken;
   } catch (err) {
     await db.integration.update({
       where: { id: integration.id },
