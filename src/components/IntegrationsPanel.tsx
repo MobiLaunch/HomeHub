@@ -26,16 +26,16 @@ type ProviderInfo = {
   accounts: ProviderAccount[];
 };
 
-const ICONS: Record<ProviderInfo["id"], string> = {
-  google: "calendar_month",
-  microsoft: "domain",
-  slack: "tag",
-  facebook: "thumb_up",
-  apple: "calendar_today",
-  spotify: "graphic_eq",
-};
-
 const INTEGRATIONS_URL = "/api/integrations";
+
+const BRAND: Record<ProviderInfo["id"], { mark: string; className: string }> = {
+  google: { mark: "G", className: "bg-white text-[#4285f4] shadow-sm" },
+  microsoft: { mark: "M", className: "bg-white text-[#2563eb] shadow-sm" },
+  slack: { mark: "#", className: "bg-white text-[#611f69] shadow-sm" },
+  facebook: { mark: "f", className: "bg-[#1877f2] text-white" },
+  apple: { mark: "", className: "bg-black text-white" },
+  spotify: { mark: "●", className: "bg-[#1db954] text-white" },
+};
 
 export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings" }) {
   const { data, error, isLoading } = useLive<{ providers: ProviderInfo[] }>(INTEGRATIONS_URL, 60_000);
@@ -104,7 +104,7 @@ function ProviderCard({
   returnTo: "setup" | "settings";
   onDisconnect: (accountId: string, label: string) => void;
 }) {
-  const providerIcon = ICONS[provider.id];
+  const brand = BRAND[provider.id];
   const { ref: glowRef, onPointerMove: glowMove, onPointerLeave: glowLeave } = usePointerGlow<HTMLDivElement>();
   const { onPointerDown: connectRippleDown, rippleLayer: connectRipple } = useRipple<HTMLAnchorElement>();
   const { onPointerDown: appleRippleDown, rippleLayer: appleRipple } = useRipple<HTMLButtonElement>();
@@ -145,20 +145,23 @@ function ProviderCard({
     >
       <div className="relative z-10 flex items-start gap-3">
         <motion.div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-          style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-          whileHover={{ rotate: 6, scale: 1.08 }}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-semibold ${brand.className}`}
+          whileHover={{ rotate: 4, scale: 1.08 }}
           transition={{ type: "spring", stiffness: 350, damping: 14 }}
+          aria-hidden="true"
         >
-          <Icon name={providerIcon} className="h-5 w-5" />
+          {brand.mark}
         </motion.div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium" style={{ color: "var(--ink)" }}>
-            {provider.displayName}
-          </p>
-          <p className="text-xs leading-snug" style={{ color: "var(--ink-soft)" }}>
-            {provider.description}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium" style={{ color: "var(--ink)" }}>{provider.displayName}</p>
+            {provider.accounts.length > 0 && (
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                Connected
+              </span>
+            )}
+          </div>
+          <p className="text-xs leading-snug" style={{ color: "var(--ink-soft)" }}>{provider.description}</p>
         </div>
       </div>
 
@@ -172,29 +175,27 @@ function ProviderCard({
         </ul>
       )}
 
-      {!provider.configured && provider.authType === "oauth" && (
-        <p className="relative z-10 text-xs" style={{ color: "var(--ink-soft)" }}>
-          Not yet configured — add the {provider.id.toUpperCase()}_CLIENT_ID /
-          _CLIENT_SECRET to your environment to enable this connection.
-        </p>
-      )}
-
-      {provider.authType === "oauth" && provider.configured && (
+      {provider.authType === "oauth" && (
         <motion.a
           href={`/api/integrations/${provider.id}/connect?from=${returnTo}`}
           onPointerDown={connectRippleDown}
-          whileTap={{ scale: 0.96 }}
-          className="ripple-surface glass-pill relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium"
-          style={{ color: "var(--accent)" }}
+          whileTap={{ scale: 0.97 }}
+          className="ripple-surface relative z-10 flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-transform"
+          style={{ color: "var(--ink)", borderColor: "var(--glass-border)", background: "var(--glass-fill-strong)" }}
+          aria-label={`Connect ${provider.displayName}`}
         >
           {connectRipple}
-          <Icon name="link" className="h-4 w-4" />
-          Connect {provider.displayName}
+          <BrandMark provider={provider.id} />
+          {provider.accounts.length > 0 ? `Add another ${provider.displayName}` : `Continue with ${provider.displayName}`}
         </motion.a>
       )}
 
       {provider.authType === "credentials" && (
         <form onSubmit={connectApple} className="relative z-10 flex flex-col gap-2">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}>
+            <BrandMark provider={provider.id} />
+            <span>Apple requires an app-specific password for iCloud CalDAV access.</span>
+          </div>
           <input
             type="email"
             required
@@ -214,25 +215,33 @@ function ProviderCard({
             style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties}
           />
           <p className="text-[11px] leading-snug" style={{ color: "var(--ink-soft)" }}>
-            Generate one at appleid.apple.com → Sign-In and Security → App-Specific
-            Passwords. Your iCloud password itself is never stored.
+            Your iCloud password itself is never stored.
           </p>
           {appleError && <p className="text-xs text-rose-500">{appleError}</p>}
           <motion.button
             type="submit"
             disabled={appleBusy}
             onPointerDown={appleRippleDown}
-            whileTap={{ scale: 0.96 }}
-            className="ripple-surface glass-pill flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium disabled:opacity-50"
-            style={{ color: "var(--accent)" }}
+            whileTap={{ scale: 0.97 }}
+            className="ripple-surface glass-pill flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+            style={{ color: "var(--ink)" }}
           >
             {appleRipple}
-            {appleBusy ? <Icon name="progress_activity" className="h-4 w-4 animate-spin" /> : <Icon name="link" className="h-4 w-4" />}
-            Connect Apple Calendar
+            <BrandMark provider={provider.id} />
+            {appleBusy ? "Connecting…" : "Connect Apple Calendar"}
           </motion.button>
         </form>
       )}
     </motion.div>
+  );
+}
+
+function BrandMark({ provider }: { provider: ProviderInfo["id"] }) {
+  const brand = BRAND[provider];
+  return (
+    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${brand.className}`} aria-hidden="true">
+      {brand.mark}
+    </span>
   );
 }
 
@@ -250,9 +259,7 @@ function AccountRow({ account, onDisconnect }: { account: ProviderAccount; onDis
     >
       <span className="flex min-w-0 items-center gap-2">
         <StatusDot status={account.status} />
-        <span className="truncate" style={{ color: "var(--ink)" }}>
-          {account.label}
-        </span>
+        <span className="truncate" style={{ color: "var(--ink)" }}>{account.label}</span>
       </span>
       <button
         onClick={onDisconnect}
@@ -280,10 +287,7 @@ function StatusDot({ status }: { status: ProviderAccount["status"] }) {
   return (
     <span className="relative flex h-2 w-2 shrink-0">
       {status === "connected" && (
-        <span
-          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
-          style={{ background: color }}
-        />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: color }} />
       )}
       <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: color }} />
     </span>
