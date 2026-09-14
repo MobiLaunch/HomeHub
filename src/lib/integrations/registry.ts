@@ -24,15 +24,19 @@ export type CredentialProviderConfig = {
 };
 
 /**
- * OAuth must use one stable callback URI. APP_URL is the canonical public
- * origin configured for the deployment; using the incoming request origin
- * can produce a redirect_uri_mismatch when the user enters through a Vercel
- * preview/custom alias that is not registered with Google.
+ * OAuth must use one stable callback URI. Prefer an explicit APP_URL so
+ * operators can register a custom domain. On Vercel, the production project
+ * URL is a safe fallback when APP_URL has not been added yet. Never use a
+ * request/preview origin here because providers require an exact match.
  */
 function appUrl() {
-  const value = process.env.APP_URL?.trim();
-  if (!value) return "http://localhost:3000";
-  return value.replace(/\/$/, "");
+  const configured = process.env.APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
+  const vercelProduction = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercelProduction) return `https://${vercelProduction.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+
+  return "http://localhost:3000";
 }
 
 export function redirectUriFor(provider: string) {
@@ -50,9 +54,6 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     scopes: [
-      // Covers both reading and creating/deleting events on the primary
-      // calendar — broader than plain `calendar.readonly`, needed for the
-      // dashboard's "add event" and delete support.
       "https://www.googleapis.com/auth/calendar.events",
       "openid",
       "email",
@@ -72,8 +73,6 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     scopes: [
       "offline_access",
       "User.Read",
-      // ReadWrite (not just Read) so the dashboard can create/delete events,
-      // not only display them.
       "Calendars.ReadWrite",
       "Chat.Read",
     ],
@@ -100,9 +99,6 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authorizeUrl: "https://www.facebook.com/v21.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // Page-level permissions. All five are available in Development Mode to
-    // the app's own admins/developers/testers without App Review — which is
-    // sufficient for a single household syncing its own Page.
     scopes: [
       "public_profile",
       "pages_show_list",
