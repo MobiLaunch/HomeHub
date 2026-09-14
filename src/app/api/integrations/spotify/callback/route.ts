@@ -7,6 +7,7 @@ import {
   getSpotifyIdentity,
   SPOTIFY_STATE_COOKIE,
   SPOTIFY_VERIFIER_COOKIE,
+  spotifyRedirectUri,
 } from "@/lib/integrations/spotify";
 
 export async function GET(request: Request) {
@@ -23,11 +24,13 @@ export async function GET(request: Request) {
 
   let expectedState = "";
   let returnPath: "/setup" | "/settings" = "/settings";
+  let redirectUri = "";
   if (stateCookie) {
     try {
-      const saved = JSON.parse(stateCookie) as { state?: unknown; from?: unknown };
+      const saved = JSON.parse(stateCookie) as { state?: unknown; from?: unknown; redirectUri?: unknown };
       expectedState = typeof saved.state === "string" ? saved.state : "";
       returnPath = saved.from === "setup" ? "/setup" : "/settings";
+      redirectUri = typeof saved.redirectUri === "string" ? saved.redirectUri : "";
     } catch {
       // Validation below intentionally fails malformed state cookies.
     }
@@ -44,7 +47,10 @@ export async function GET(request: Request) {
   if (!verifier) return fail("Spotify authorization expired. Please connect Spotify again.");
 
   try {
-    const tokens = await exchangeSpotifyCode(code, verifier);
+    // Use the exact URI captured before redirecting to Spotify. If an older
+    // state cookie has no URI, fall back to the deployment's canonical URI.
+    const exactRedirectUri = redirectUri || spotifyRedirectUri();
+    const tokens = await exchangeSpotifyCode(code, verifier, exactRedirectUri);
     const identity = await getSpotifyIdentity(tokens.access_token!);
 
     await db.integration.upsert({
