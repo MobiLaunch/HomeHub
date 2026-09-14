@@ -3,16 +3,26 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 
+type PresentationRequestLike = {
+  start: () => Promise<unknown>;
+};
+
 type PresentationNavigator = Navigator & {
   presentation?: {
-    defaultRequest?: PresentationRequest;
+    defaultRequest?: unknown;
   };
 };
 
+declare global {
+  interface Window {
+    PresentationRequest?: new (urls: string | string[]) => PresentationRequestLike;
+  }
+}
+
 /**
- * Uses the browser Presentation API when available. This is intentionally
- * standards-based: compatible Chrome/Edge receivers can be discovered by the
- * browser, while unsupported browsers get a clear fallback.
+ * Uses the browser Presentation API when available. The API is optional in
+ * browsers, so keep its types local instead of requiring a DOM lib extension
+ * that TypeScript may not ship with.
  */
 export function CastButton() {
   const [supported, setSupported] = useState(false);
@@ -20,21 +30,27 @@ export function CastButton() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setSupported(typeof navigator !== "undefined" && "presentation" in navigator);
+    setSupported(
+      typeof navigator !== "undefined" &&
+        "presentation" in navigator &&
+        typeof window !== "undefined" &&
+        typeof window.PresentationRequest === "function",
+    );
   }, []);
 
   async function cast() {
     setMessage(null);
     const nav = navigator as PresentationNavigator;
+    const PresentationRequestCtor = window.PresentationRequest;
 
-    if (!nav.presentation || typeof PresentationRequest === "undefined") {
+    if (!nav.presentation || !PresentationRequestCtor) {
       setMessage("Casting is not supported by this browser. Try Chrome or Edge on a compatible TV.");
       return;
     }
 
     setBusy(true);
     try {
-      const request = new PresentationRequest([window.location.href]);
+      const request = new PresentationRequestCtor([window.location.href]);
       nav.presentation.defaultRequest = request;
       await request.start();
     } catch (error) {
@@ -65,7 +81,11 @@ export function CastButton() {
         <p
           role="status"
           className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl p-3 text-xs shadow-xl"
-          style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)", border: "1px solid var(--glass-border)" }}
+          style={{
+            background: "var(--glass-fill-strong)",
+            color: "var(--ink-soft)",
+            border: "1px solid var(--glass-border)",
+          }}
         >
           {message}
         </p>
