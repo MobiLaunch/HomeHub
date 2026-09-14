@@ -7,6 +7,7 @@ export type OAuthProviderConfig = {
   description: string;
   clientIdEnv: string;
   clientSecretEnv: string;
+  requiresClientSecret?: boolean;
   authorizeUrl: string;
   tokenUrl: string;
   scopes: string[];
@@ -114,10 +115,11 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     displayName: "Spotify",
     description: "See what's playing, with album art, on your dashboard.",
     clientIdEnv: "SPOTIFY_CLIENT_ID",
-    clientSecretEnv: "SPOTIFY_CLIENT_SECRET",
+    clientSecretEnv: "",
+    requiresClientSecret: false,
     authorizeUrl: "https://accounts.spotify.com/authorize",
     tokenUrl: "https://accounts.spotify.com/api/token",
-    scopes: ["user-read-currently-playing", "user-read-playback-state", "user-read-recently-played"],
+    scopes: ["user-read-playback-state", "user-read-currently-playing", "user-read-recently-played"],
   },
   apple: {
     authType: "credentials",
@@ -147,10 +149,12 @@ export function providerClientId(config: OAuthProviderConfig): string | undefine
 }
 
 export function providerClientSecret(config: OAuthProviderConfig): string | undefined {
-  return process.env[config.clientSecretEnv];
+  return config.clientSecretEnv ? process.env[config.clientSecretEnv] : undefined;
 }
 
 export function isProviderConfigured(config: ProviderConfig): boolean {
   if (config.authType === "credentials") return true;
-  return Boolean(providerClientId(config) && providerClientSecret(config));
+  if (!providerClientId(config)) return false;
+  if (config.requiresClientSecret === false) return true;
+  return Boolean(providerClientSecret(config));
 }
