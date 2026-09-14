@@ -3,12 +3,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import type { CalendarEvent } from "@/lib/integrations/live";
+import type { GoogleCalendarExtras } from "@/lib/integrations/google-calendar";
 
 const SOURCE_META: Record<CalendarEvent["source"], { label: string; mark: string }> = {
   google: { label: "Google", mark: "G" },
   microsoft: { label: "Microsoft", mark: "M" },
   apple: { label: "Apple", mark: "" },
 };
+
+type EnrichedEvent = CalendarEvent & Partial<GoogleCalendarExtras>;
 
 function dayKey(value: string) {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -63,7 +66,7 @@ export function AgendaView({
   return (
     <div className="space-y-4">
       {nextEvent && (
-        <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--accent-soft)" }}>
+        <button onClick={() => onSelect(nextEvent)} className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left active:scale-[0.99]" style={{ background: "var(--accent-soft)" }}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
             <Icon name="schedule" className="h-4 w-4" />
           </div>
@@ -72,7 +75,7 @@ export function AgendaView({
             <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{nextEvent.title}</p>
           </div>
           <span className="ml-auto shrink-0 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{timeLabel(nextEvent)}</span>
-        </div>
+        </button>
       )}
 
       <div className="max-h-[52vh] overflow-y-auto pr-1 sm:max-h-[560px]">
@@ -86,38 +89,46 @@ export function AgendaView({
                   <span className="text-xs" style={{ color: "var(--ink-soft)" }}>{dayEvents.length}</span>
                 </div>
                 <div className="space-y-2">
-                  {dayEvents.map((event) => (
-                    <motion.div
-                      key={event.id}
-                      layout
-                      whileHover={{ x: 2 }}
-                      className="group grid w-full grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 text-left sm:grid-cols-[5.5rem_1fr]"
-                      style={{ background: "var(--glass-fill-strong)" }}
-                    >
-                      <button onClick={() => onSelect(event)} className="text-left pt-0.5 text-xs font-medium" style={{ color: "var(--ink-soft)" }} aria-label={`Open ${event.title}`}>
-                        <div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div>
-                      </button>
-                      <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
-                        <div className="flex items-start gap-2">
-                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: event.source === "google" ? "var(--accent)" : "var(--ink-soft)" }} />
-                          <div className="min-w-0 flex-1">
-                            <button onClick={() => onSelect(event)} className="block w-full text-left">
-                              <p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p>
-                              <p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>
-                            </button>
-                            {event.location && (
-                              <div className="mt-1.5 flex items-center gap-2">
-                                <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex min-w-0 items-center gap-1 truncate text-xs hover:underline" style={{ color: "var(--ink-soft)" }}>
-                                  <Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}
-                                </a>
-                                <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Directions</a>
+                  {dayEvents.map((event) => {
+                    const enriched = event as EnrichedEvent;
+                    const eventColor = enriched.googleCalendarColor ?? (event.source === "google" ? "var(--accent)" : "var(--ink-soft)");
+                    return (
+                      <motion.div
+                        key={event.id}
+                        layout
+                        whileHover={{ x: 2 }}
+                        className="group grid w-full grid-cols-[4.5rem_1fr] gap-3 rounded-2xl p-3 text-left sm:grid-cols-[5.5rem_1fr]"
+                        style={{ background: "var(--glass-fill-strong)" }}
+                      >
+                        <button onClick={() => onSelect(event)} className="min-h-11 pt-0.5 text-left text-xs font-medium" style={{ color: "var(--ink-soft)" }} aria-label={`Open ${event.title}`}>
+                          <div className="flex items-center gap-1"><Icon name="schedule" className="h-3.5 w-3.5" />{timeLabel(event)}</div>
+                        </button>
+                        <div className="min-w-0 border-l pl-3" style={{ borderColor: "var(--glass-border)" }}>
+                          <div className="flex items-start gap-2">
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: eventColor }} />
+                            <div className="min-w-0 flex-1">
+                              <button onClick={() => onSelect(event)} className="block min-h-11 w-full text-left">
+                                <p className="text-sm font-semibold leading-5" style={{ color: "var(--ink)" }}>{event.title}</p>
+                                <p className="mt-0.5 text-xs" style={{ color: "var(--ink-soft)" }}>{SOURCE_META[event.source].label} · {event.accountLabel}</p>
+                              </button>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {event.location && (
+                                  <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex min-h-9 max-w-full min-w-0 items-center gap-1 truncate rounded-full px-1.5 text-xs hover:underline" style={{ color: "var(--ink-soft)" }}>
+                                    <Icon name="location_on" className="h-3 w-3 shrink-0" />{event.location}
+                                  </a>
+                                )}
+                                {event.source === "google" && enriched.googleMeetUrl && (
+                                  <a href={enriched.googleMeetUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[11px] font-semibold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                                    <Icon name="video_call" className="h-3.5 w-3.5" /> Meet
+                                  </a>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.section>
             ))}
