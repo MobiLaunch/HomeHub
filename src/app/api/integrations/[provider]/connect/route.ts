@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { PROVIDERS, isOAuthProvider, isProviderConfigured } from "@/lib/integrations/registry";
+import {
+  PROVIDERS,
+  isOAuthProvider,
+  isProviderConfigured,
+  redirectUriFor,
+} from "@/lib/integrations/registry";
 import { buildAuthorizeUrl, generateState, OAUTH_STATE_COOKIE_PREFIX } from "@/lib/integrations/oauth";
 import type { IntegrationProvider } from "@/generated/prisma/enums";
 
@@ -27,12 +32,14 @@ export async function GET(
   }
 
   const state = generateState();
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const origin = forwardedProto && forwardedHost
-    ? `${forwardedProto}://${forwardedHost}`
-    : requestUrl.origin;
-  const redirectUri = `${origin}/api/integrations/${provider}/callback`;
+
+  // OAuth providers (especially Google) require the redirect_uri in the
+  // authorize request to exactly match an allow-listed URI. Do not derive it
+  // from the incoming Host header: proxies, preview domains and custom aliases
+  // can otherwise send a URI that the provider rejects. APP_URL is the
+  // deployment's canonical public origin and is the value operators register
+  // with each provider.
+  const redirectUri = redirectUriFor(provider);
   const cookieStore = await cookies();
 
   cookieStore.set(`${OAUTH_STATE_COOKIE_PREFIX}${provider}`, JSON.stringify({ state, from, redirectUri }), {
