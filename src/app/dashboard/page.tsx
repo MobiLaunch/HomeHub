@@ -11,6 +11,7 @@ import { Corkboard } from "@/components/dashboard/Corkboard";
 import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
 import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
 import { DashboardFab } from "@/components/dashboard/DashboardFab";
+import { CastButton } from "@/components/dashboard/CastButton";
 import { TileActivityProvider, useTileActivitySnapshot } from "@/hooks/useTileActivity";
 
 type TilePref = { tileType: string; enabled: boolean; position: number; size: "sm" | "md" | "lg" };
@@ -50,11 +51,8 @@ function DashboardContent() {
   const calendar = visibleTiles.find((t) => t.tileType === "calendar");
 
   // Tiles reorder and grow live: whichever secondary tile currently has the
-  // highest reported activity score (Spotify playing, fresh messages, a
-  // fuller live-activity stack) moves to the front and, if it asked for it,
-  // temporarily renders at "lg" — all animated via each Tile's own
-  // framer-motion `layout` prop, so this reflow just falls out of re-sorting
-  // the array on every activity update.
+  // highest reported activity score moves to the front. On phones they become
+  // a native-feeling horizontal snap carousel; larger screens retain the grid.
   const secondary = visibleTiles
     .filter((t) => t.tileType !== "calendar")
     .map((t) => ({ ...t, ...(activity[t.tileType] ?? { score: 0, boostSize: false }) }))
@@ -62,7 +60,15 @@ function DashboardContent() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <GreetingHeader householdName={householdName} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <GreetingHeader householdName={householdName} />
+        </div>
+        <div className="shrink-0 pt-1">
+          <CastButton />
+        </div>
+      </div>
+
       {calendar && (
         <Tile
           title={TILE_REGISTRY.calendar.title}
@@ -74,21 +80,27 @@ function DashboardContent() {
           <CalendarTile />
         </Tile>
       )}
+
       {secondary.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3"
+          style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none", touchAction: "pan-x pan-y" }}
+          aria-label="Dashboard cards"
+        >
           {secondary.map((tile, index) => {
             const meta = TILE_REGISTRY[tile.tileType];
             return (
-              <Tile
-                key={tile.tileType}
-                title={meta.title}
-                icon={meta.icon}
-                size={tile.boostSize ? "lg" : tile.size}
-                index={index + 1}
-                active={tile.boostSize}
-              >
-                {meta.render()}
-              </Tile>
+              <div key={tile.tileType} className="w-[calc(100vw-2rem)] shrink-0 snap-center sm:w-auto sm:shrink">
+                <Tile
+                  title={meta.title}
+                  icon={meta.icon}
+                  size={tile.boostSize ? "lg" : tile.size}
+                  index={index + 1}
+                  active={tile.boostSize}
+                >
+                  {meta.render()}
+                </Tile>
+              </div>
             );
           })}
         </div>
