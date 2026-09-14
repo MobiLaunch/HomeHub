@@ -3,11 +3,16 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/Icon";
 
+type PresentationNavigator = Navigator & {
+  presentation?: {
+    defaultRequest?: PresentationRequest;
+  };
+};
+
 /**
- * Uses the browser Presentation API when the browser/device exposes it.
- * This keeps casting standards-based: Chrome/Edge can discover compatible
- * presentation/cast receivers, while unsupported browsers get a friendly
- * fallback instead of a broken button.
+ * Uses the browser Presentation API when available. This is intentionally
+ * standards-based: compatible Chrome/Edge receivers can be discovered by the
+ * browser, while unsupported browsers get a clear fallback.
  */
 export function CastButton() {
   const [supported, setSupported] = useState(false);
@@ -15,23 +20,14 @@ export function CastButton() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const nav = navigator as Navigator & {
-      presentation?: {
-        defaultRequest?: unknown;
-      };
-    };
-    setSupported(typeof nav.presentation !== "undefined" && typeof window !== "undefined");
+    setSupported(typeof navigator !== "undefined" && "presentation" in navigator);
   }, []);
 
   async function cast() {
     setMessage(null);
-    const nav = navigator as Navigator & {
-      presentation?: {
-        defaultRequest?: { requestSession: () => Promise<unknown> };
-      };
-    };
+    const nav = navigator as PresentationNavigator;
 
-    if (!nav.presentation) {
+    if (!nav.presentation || typeof PresentationRequest === "undefined") {
       setMessage("Casting is not supported by this browser. Try Chrome or Edge on a compatible TV.");
       return;
     }
@@ -65,7 +61,7 @@ export function CastButton() {
         <Icon name="cast" className="h-5 w-5" />
         <span className="hidden sm:inline">{busy ? "Connecting…" : "Cast to TV"}</span>
       </button>
-      {!supported && message && (
+      {message && (
         <p
           role="status"
           className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl p-3 text-xs shadow-xl"
@@ -74,14 +70,8 @@ export function CastButton() {
           {message}
         </p>
       )}
-      {supported && message && (
-        <p
-          role="status"
-          className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl p-3 text-xs shadow-xl"
-          style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)", border: "1px solid var(--glass-border)" }}
-        >
-          {message}
-        </p>
+      {!supported && !message && (
+        <span className="sr-only">TV casting may be unavailable in this browser.</span>
       )}
     </div>
   );
