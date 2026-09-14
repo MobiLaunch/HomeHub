@@ -35,9 +35,6 @@ export function CalendarTile() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const showSnackbar = useSnackbar();
 
-  // Wall-clock recency check, not derived render state — expected to read
-  // differently on each poll/re-render as events pass.
-  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const upcoming = events
     .filter((e) => new Date(e.end ?? e.start).getTime() >= now)
@@ -56,12 +53,7 @@ export function CalendarTile() {
 
   async function handleDelete(event: CalendarEvent) {
     setSelectedEvent(null);
-    mutate(
-      CALENDAR_URL,
-      (current: { events: CalendarEvent[] } | undefined) =>
-        current && { events: current.events.filter((e) => e.id !== event.id) },
-      { revalidate: false },
-    );
+    mutate(CALENDAR_URL, (current: { events: CalendarEvent[] } | undefined) => current && { events: current.events.filter((e) => e.id !== event.id) }, { revalidate: false });
     await fetch(CALENDAR_URL, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -75,9 +67,7 @@ export function CalendarTile() {
     return (
       <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
         <Icon name="calendar_month" className="h-6 w-6" style={{ color: "var(--ink-soft)" }} />
-        <p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>
-          Loading your calendars…
-        </p>
+        <p className="max-w-xs text-sm" style={{ color: "var(--ink-soft)" }}>Loading your calendars…</p>
       </div>
     );
   }
@@ -90,13 +80,7 @@ export function CalendarTile() {
           {view !== "agenda" && (
             <>
               <NavButton icon="chevron_left" label="Previous" onClick={() => navigate(-1)} />
-              <button
-                onClick={() => setAnchor(new Date())}
-                className="glass-pill px-3 py-1.5 text-xs font-medium"
-                style={{ color: "var(--accent)" }}
-              >
-                Today
-              </button>
+              <button onClick={() => setAnchor(new Date())} className="glass-pill min-h-8 px-3 py-1.5 text-xs font-medium" style={{ color: "var(--accent)" }}>Today</button>
               <NavButton icon="chevron_right" label="Next" onClick={() => navigate(1)} />
             </>
           )}
@@ -104,119 +88,58 @@ export function CalendarTile() {
         </div>
       </div>
 
+      {upcoming.length > 0 && (
+        <NextUp event={upcoming[0]} onSelect={setSelectedEvent} />
+      )}
+
       <AnimatePresence mode="wait">
-        <motion.div
-          key={view}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        >
+        <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
           {view === "agenda" && <AgendaView events={events} onSelect={setSelectedEvent} />}
           {view === "week" && <WeekView events={events} anchor={anchor} onSelect={setSelectedEvent} />}
-          {view === "month" && (
-            <MonthView
-              events={events}
-              anchor={anchor}
-              onDayClick={(day) => {
-                setAnchor(day);
-                setView("week");
-              }}
-            />
-          )}
-          {view === "year" && (
-            <YearView
-              events={events}
-              anchor={anchor}
-              onMonthClick={(monthAnchor) => {
-                setAnchor(monthAnchor);
-                setView("month");
-              }}
-              onDayClick={(day) => {
-                setAnchor(day);
-                setView("week");
-              }}
-            />
-          )}
+          {view === "month" && <MonthView events={events} anchor={anchor} onDayClick={(day) => { setAnchor(day); setView("week"); }} />}
+          {view === "year" && <YearView events={events} anchor={anchor} onMonthClick={(monthAnchor) => { setAnchor(monthAnchor); setView("month"); }} onDayClick={(day) => { setAnchor(day); setView("week"); }} />}
         </motion.div>
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showNewEvent && <NewEventForm onClose={() => setShowNewEvent(false)} defaultDate={anchor} />}
-      </AnimatePresence>
-      <AnimatePresence>
-        {selectedEvent && (
-          <EventDetailSheet
-            event={selectedEvent}
-            onClose={() => setSelectedEvent(null)}
-            onDelete={() => handleDelete(selectedEvent)}
-          />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{showNewEvent && <NewEventForm onClose={() => setShowNewEvent(false)} defaultDate={anchor} />}</AnimatePresence>
+      <AnimatePresence>{selectedEvent && <EventDetailSheet event={selectedEvent} onClose={() => setSelectedEvent(null)} onDelete={() => handleDelete(selectedEvent)} />}</AnimatePresence>
     </div>
+  );
+}
+
+function NextUp({ event, onSelect }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  const start = new Date(event.start);
+  const delta = start.getTime() - Date.now();
+  const relative = delta <= 0 ? "Now" : delta < 3_600_000 ? `In ${Math.max(1, Math.round(delta / 60_000))} min` : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return (
+    <button onClick={() => onSelect(event)} onPointerDown={onPointerDown} className="ripple-surface relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left" style={{ background: "var(--accent-soft)", color: "var(--ink)" }}>
+      {rippleLayer}
+      <span className="h-9 w-1 rounded-full" style={{ background: "var(--accent)" }} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Next up · {relative}</span>
+        <span className="mt-0.5 block truncate text-sm font-semibold">{event.title}</span>
+      </span>
+      <Icon name="chevron_right" className="h-5 w-5 shrink-0" style={{ color: "var(--ink-soft)" }} />
+    </button>
   );
 }
 
 function ViewSwitcher({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
-  return (
-    <div className="glass-pill relative inline-flex p-1">
-      {VIEWS.map((v) => (
-        <ViewSegment key={v.value} active={value === v.value} label={v.label} onSelect={() => onChange(v.value)} />
-      ))}
-    </div>
-  );
+  return <div className="glass-pill relative inline-flex max-w-full overflow-x-auto p-1">{VIEWS.map((v) => <ViewSegment key={v.value} active={value === v.value} label={v.label} onSelect={() => onChange(v.value)} />)}</div>;
 }
 
 function ViewSegment({ active, label, onSelect }: { active: boolean; label: string; onSelect: () => void }) {
   const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
-  return (
-    <button
-      onClick={onSelect}
-      onPointerDown={onPointerDown}
-      className="ripple-surface relative rounded-full px-3 py-1.5 text-xs font-medium"
-      style={{ color: active ? "var(--on-accent)" : "var(--ink-soft)" }}
-    >
-      {active && (
-        <motion.span
-          layoutId="calendar-view-active"
-          transition={{ type: "spring", stiffness: 500, damping: 32 }}
-          className="absolute inset-0 rounded-full"
-          style={{ background: "var(--accent)" }}
-        />
-      )}
-      {rippleLayer}
-      <span className="relative">{label}</span>
-    </button>
-  );
+  return <button onClick={onSelect} onPointerDown={onPointerDown} className="ripple-surface relative min-h-8 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium" style={{ color: active ? "var(--on-accent)" : "var(--ink-soft)" }}>{active && <motion.span layoutId="calendar-view-active" transition={{ type: "spring", stiffness: 500, damping: 32 }} className="absolute inset-0 rounded-full" style={{ background: "var(--accent)" }} />}{rippleLayer}<span className="relative">{label}</span></button>;
 }
 
 function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
-  return (
-    <button
-      onClick={onClick}
-      onPointerDown={onPointerDown}
-      aria-label={label}
-      className="ripple-surface glass-pill flex h-8 w-8 items-center justify-center"
-    >
-      {rippleLayer}
-      <Icon name={icon} className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
-    </button>
-  );
+  return <button onClick={onClick} onPointerDown={onPointerDown} aria-label={label} className="ripple-surface glass-pill flex h-9 w-9 items-center justify-center">{rippleLayer}<Icon name={icon} className="h-4 w-4" style={{ color: "var(--ink-soft)" }} /></button>;
 }
 
 function NewEventButton({ onClick }: { onClick: () => void }) {
   const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
-  return (
-    <motion.button
-      onClick={onClick}
-      onPointerDown={onPointerDown}
-      whileTap={{ scale: 0.94 }}
-      aria-label="New event"
-      className="ripple-surface glass-pill flex h-8 w-8 items-center justify-center"
-    >
-      {rippleLayer}
-      <Icon name="add" className="h-4 w-4" style={{ color: "var(--accent)" }} />
-    </motion.button>
-  );
+  return <motion.button onClick={onClick} onPointerDown={onPointerDown} whileTap={{ scale: 0.94 }} aria-label="New event" className="ripple-surface glass-pill flex h-9 w-9 items-center justify-center">{rippleLayer}<Icon name="add" className="h-4 w-4" style={{ color: "var(--accent)" }} /></motion.button>;
 }
