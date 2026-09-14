@@ -13,8 +13,7 @@ const TILE_META: Record<string, { label: string; icon: string; hint: string }> =
   calendar: { label: "Calendar", icon: "calendar_month", hint: "Upcoming events across every connected calendar" },
   messages: { label: "Messages", icon: "forum", hint: "Recent Slack & Teams activity" },
   notifications: { label: "Live activity", icon: "notifications", hint: "A flippable stack of new messages, upcoming events, and reminders" },
-  notes: { label: "Notes", icon: "sticky_note_2", hint: "Sticky notes anyone in the house can leave" },
-  stickers: { label: "Stickers", icon: "auto_awesome", hint: "A playful corkboard for the family" },
+  corkboard: { label: "Corkboard", icon: "push_pin", hint: "Sticky notes and stickers anyone in the house can drag around" },
   facebook_insights: { label: "Page insights", icon: "thumb_up", hint: "Comments, Messenger activity, and stats for your Facebook Page" },
   spotify: { label: "Now playing", icon: "graphic_eq", hint: "Whatever's playing on Spotify, with album art" },
 };

@@ -5,8 +5,7 @@ const DEFAULT_TILES = [
   { tileType: "calendar", position: 0, size: "lg" },
   { tileType: "messages", position: 1, size: "md" },
   { tileType: "notifications", position: 2, size: "md" },
-  { tileType: "notes", position: 3, size: "md" },
-  { tileType: "stickers", position: 4, size: "lg" },
+  { tileType: "corkboard", position: 3, size: "lg" },
   { tileType: "facebook_insights", position: 5, size: "md" },
   { tileType: "spotify", position: 6, size: "md" },
 ];

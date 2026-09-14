@@ -14,9 +14,9 @@ type Panel = null | "note" | "sticker";
 
 /**
  * M3 expressive FAB with a speed-dial: quick-add a note or a sticker from
- * anywhere on the dashboard, without scrolling to those tiles. Posts to the
- * same endpoints NotesTile/StickerBoard read via SWR, so their `mutate`
- * calls here update those tiles immediately wherever they're scrolled to.
+ * anywhere on the dashboard, without scrolling to the Corkboard tile. Posts
+ * to the same endpoints Corkboard reads via SWR, so the `mutate` calls here
+ * update it immediately wherever it's scrolled to.
  */
 export function DashboardFab() {
   const [panel, setPanel] = useState<Panel>(null);

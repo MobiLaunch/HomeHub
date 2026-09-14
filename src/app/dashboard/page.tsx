@@ -7,8 +7,7 @@ import { Tile } from "@/components/dashboard/Tile";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
 import { MessagesTile } from "@/components/dashboard/MessagesTile";
 import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
-import { NotesTile } from "@/components/dashboard/NotesTile";
-import { StickerBoard } from "@/components/dashboard/StickerBoard";
+import { Corkboard } from "@/components/dashboard/Corkboard";
 import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
 import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
 import { DashboardFab } from "@/components/dashboard/DashboardFab";
@@ -20,8 +19,7 @@ const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; rend
   calendar: { title: "Family calendar", icon: <Icon name="calendar_month" />, render: () => <CalendarTile /> },
   messages: { title: "Messages", icon: <Icon name="forum" />, render: () => <MessagesTile /> },
   notifications: { title: "Live activity", icon: <Icon name="notifications" />, render: () => <LiveActivityStack /> },
-  notes: { title: "Notes", icon: <Icon name="sticky_note_2" />, render: () => <NotesTile /> },
-  stickers: { title: "Sticker board", icon: <Icon name="auto_awesome" />, render: () => <StickerBoard /> },
+  corkboard: { title: "Corkboard", icon: <Icon name="push_pin" />, render: () => <Corkboard /> },
   facebook_insights: {
     title: "Page insights",
     icon: <Icon name="thumb_up" />,

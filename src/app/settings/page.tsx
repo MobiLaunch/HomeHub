@@ -16,8 +16,7 @@ const TILE_META: Record<string, { label: string; icon: string }> = {
   calendar: { label: "Calendar", icon: "calendar_month" },
   messages: { label: "Messages", icon: "forum" },
   notifications: { label: "Live activity", icon: "notifications" },
-  notes: { label: "Notes", icon: "sticky_note_2" },
-  stickers: { label: "Stickers", icon: "auto_awesome" },
+  corkboard: { label: "Corkboard", icon: "push_pin" },
   facebook_insights: { label: "Page insights", icon: "thumb_up" },
   spotify: { label: "Now playing", icon: "graphic_eq" },
 };
