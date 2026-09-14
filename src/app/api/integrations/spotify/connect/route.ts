@@ -15,9 +15,6 @@ export async function GET(request: Request) {
   const from = requestUrl.searchParams.get("from") === "setup" ? "setup" : "settings";
 
   try {
-    // Fail before redirecting if the deployment has not been configured with
-    // its Spotify app. The UI uses this same configuration check, but keeping
-    // the server-side guard makes the endpoint safe to call directly.
     spotifyClientId();
     const redirectUri = spotifyRedirectUri();
     const state = createSpotifyState();
@@ -32,9 +29,10 @@ export async function GET(request: Request) {
       path: "/",
     };
 
-    // Keep the exact redirect URI alongside the OAuth state. Spotify requires
-    // the redirect_uri in the authorization request and token exchange to be
-    // byte-for-byte identical, including trailing slashes/casing.
+    // Spotify requires the redirect_uri used during authorization to exactly
+    // match the redirect_uri used during token exchange. Capture the value
+    // alongside the state so the callback cannot accidentally recompute a
+    // different URI after the external redirect.
     cookieStore.set(
       SPOTIFY_STATE_COOKIE,
       JSON.stringify({ state, from, redirectUri }),
@@ -42,7 +40,7 @@ export async function GET(request: Request) {
     );
     cookieStore.set(SPOTIFY_VERIFIER_COOKIE, verifier, cookieOptions);
 
-    return NextResponse.redirect(buildSpotifyAuthorizeUrl(state, verifier));
+    return NextResponse.redirect(buildSpotifyAuthorizeUrl(state, verifier, redirectUri));
   } catch (error) {
     const destination = new URL(from === "setup" ? "/setup" : "/settings", requestUrl.origin);
     destination.searchParams.set("error", (error as Error).message);
