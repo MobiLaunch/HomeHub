@@ -53,10 +53,10 @@ export default function SplashPage() {
           transition={{ delay: 0.35, duration: 0.5 }}
           className="flex flex-col items-center gap-1"
         >
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--ink)" }}>
+          <h1 className="m3-headline-medium" style={{ color: "var(--ink)" }}>
             HomeHub
           </h1>
-          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+          <p className="m3-body-medium" style={{ color: "var(--ink-soft)" }}>
             Your household, at a glance.
           </p>
         </motion.div>

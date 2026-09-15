@@ -105,7 +105,7 @@ export default function SettingsPage() {
             <Icon name="arrow_back" className="h-4 w-4" style={{ color: "var(--ink-soft)" }} />
           </motion.span>
         </Link>
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
+        <h1 className="m3-headline-small" style={{ color: "var(--ink)" }}>
           Settings
         </h1>
       </div>
@@ -120,7 +120,7 @@ export default function SettingsPage() {
         onPointerLeave={householdGlowLeave}
         className="glass glow flex flex-col gap-4 p-5"
       >
-        <h2 className="relative z-10 text-sm font-semibold" style={{ color: "var(--ink)" }}>
+        <h2 className="relative z-10 m3-title-medium" style={{ color: "var(--ink)" }}>
           Household
         </h2>
         <div className="relative z-10 flex flex-col gap-3 sm:flex-row">
@@ -173,7 +173,7 @@ export default function SettingsPage() {
         onPointerLeave={tilesGlowLeave}
         className="glass glow flex flex-col gap-4 p-5"
       >
-        <h2 className="relative z-10 text-sm font-semibold" style={{ color: "var(--ink)" }}>
+        <h2 className="relative z-10 m3-title-medium" style={{ color: "var(--ink)" }}>
           Dashboard tiles
         </h2>
         <div className="relative z-10 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -208,7 +208,7 @@ export default function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+        <h2 className="m3-title-medium" style={{ color: "var(--ink)" }}>
           Connected accounts
         </h2>
         <IntegrationsPanel returnTo="settings" />

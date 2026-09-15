@@ -71,10 +71,18 @@
   --m3-inverse-on-surface: #f1f0f4;
   --m3-inverse-primary: #a8c7fa;
 
+  /* Full M3 shape scale. sm/md/lg/xl are the pre-existing tokens (already
+     used everywhere) — none/xs/xxl/full extend the scale outward for
+     Expressive's "increased" large shapes (hero FABs, morph targets) and
+     the small/pill end (chips, switch thumbs, morph rest states). */
+  --shape-none: 0px;
+  --shape-xs: 4px;
   --shape-sm: 12px;
   --shape-md: 16px;
   --shape-lg: 20px;
   --shape-xl: 28px;
+  --shape-xxl: 32px;
+  --shape-full: 999px;
 
   --elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 1px 3px 1px rgba(0, 0, 0, 0.1);
   --elevation-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.24), 0px 2px 6px 2px rgba(0, 0, 0, 0.1);
@@ -407,6 +415,30 @@ body {
   }
 }
 
+/* Continuous horizontal "flow" for WavyProgressBar's active state — slides
+   by exactly one wavelength (100 / WAVE_COUNT = 100/6 view-box units, which
+   CSS transforms on SVG map 1:1 to px) so the periodic wave pattern loops
+   seamlessly. Keep WAVE_COUNT here in sync with the constant in
+   WavyProgressBar.tsx. */
+@keyframes wavy-progress-flow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-16.6667px);
+  }
+}
+
+.wavy-progress-flow {
+  animation: wavy-progress-flow 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wavy-progress-flow {
+    animation: none;
+  }
+}
+
 /* Material Symbols icon font — ligature-driven, sized/weighted via
    font-variation-settings rather than swapping SVGs. See Icon.tsx.
    Self-hosted (rather than a fonts.googleapis.com <link>) for the same
@@ -430,4 +462,119 @@ body {
   direction: ltr;
   -webkit-font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------------------
+   M3 Expressive type scale. Five roles (display/headline/title/body/label)
+   each in large/medium/small, per Material 3's typography spec — size,
+   line-height, weight, and tracking are all part of the role, not just size,
+   so a `<p className="m3-title-medium">` reads correctly wherever it's used
+   instead of components picking ad hoc Tailwind text-* utilities. Google
+   Sans throughout (see layout.tsx); Expressive leans slightly heavier than
+   stock M3 on the title/label roles for more visual presence. */
+.m3-display-large {
+  font-size: 3.5625rem; /* 57px */
+  line-height: 4rem; /* 64px */
+  font-weight: 500;
+  letter-spacing: -0.015625rem;
+}
+.m3-display-medium {
+  font-size: 2.8125rem; /* 45px */
+  line-height: 3.25rem; /* 52px */
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.m3-display-small {
+  font-size: 2.25rem; /* 36px */
+  line-height: 2.75rem; /* 44px */
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.m3-headline-large {
+  font-size: 2rem; /* 32px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.m3-headline-medium {
+  font-size: 1.75rem; /* 28px */
+  line-height: 2.25rem; /* 36px */
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.m3-headline-small {
+  font-size: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.m3-title-large {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.m3-title-medium {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 600;
+  letter-spacing: 0.009375rem;
+}
+.m3-title-small {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 600;
+  letter-spacing: 0.00625rem;
+}
+.m3-body-large {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 400;
+  letter-spacing: 0.03125rem;
+}
+.m3-body-medium {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 400;
+  letter-spacing: 0.015625rem;
+}
+.m3-body-small {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 400;
+  letter-spacing: 0.025rem;
+}
+.m3-label-large {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 600;
+  letter-spacing: 0.00625rem;
+}
+.m3-label-medium {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 600;
+  letter-spacing: 0.03125rem;
+}
+.m3-label-small {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1rem; /* 16px */
+  font-weight: 600;
+  letter-spacing: 0.03125rem;
+}
+
+/* Modest responsive bump for the "hero" roles used on the dashboard's own
+   greeting/clock (a wall-mounted display benefits from a bit more size at
+   wider viewports) — kept self-contained here rather than layered with
+   Tailwind's text-* utilities, which unlayered custom CSS would always
+   beat regardless of breakpoint. */
+@media (min-width: 640px) {
+  .m3-display-medium {
+    font-size: 3.75rem; /* 60px */
+    line-height: 4rem; /* 64px */
+  }
+  .m3-headline-small {
+    font-size: 1.875rem; /* 30px */
+    line-height: 2.375rem; /* 38px */
+  }
 }

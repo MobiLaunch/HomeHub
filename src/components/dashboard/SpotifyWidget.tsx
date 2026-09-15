@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
+import { WavyProgressBar } from "@/components/WavyProgressBar";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
 import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
@@ -215,20 +216,11 @@ function PlayerControls({
   const fraction = durationMs > 0 ? Math.min(1, positionMs / durationMs) : 0;
   return (
     <div className="flex flex-col gap-2">
-      <button
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          onSeek(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)) * durationMs);
-        }}
-        className="group relative h-1.5 w-full overflow-hidden rounded-full"
-        style={{ background: "var(--glass-fill-strong)" }}
-        aria-label="Seek"
-      >
-        <div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${fraction * 100}%`, background: "var(--accent)" }}
-        />
-      </button>
+      <WavyProgressBar
+        progress={fraction}
+        active={!isPaused}
+        onSeek={(f) => onSeek(f * durationMs)}
+      />
       <div className="flex items-center justify-between">
         <span className="text-[10px] tabular-nums" style={{ color: "var(--ink-soft)" }}>
           {formatDuration(positionMs)}

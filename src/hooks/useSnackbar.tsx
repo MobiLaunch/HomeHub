@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { spatial } from "@/lib/motion";
 
 type SnackbarAction = { label: string; onClick: () => void };
 type SnackbarMessage = { id: number; text: string; action?: SnackbarAction };
@@ -40,22 +41,22 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: 24, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 420, damping: 32 }}
-              className="pointer-events-auto flex items-center gap-4 rounded-2xl px-4 py-3 text-sm"
+              transition={spatial.default}
+              className="pointer-events-auto flex items-center gap-4 rounded-2xl px-4 py-3"
               style={{
                 background: "var(--m3-inverse-surface)",
                 color: "var(--m3-inverse-on-surface)",
                 boxShadow: "var(--elevation-3)",
               }}
             >
-              <span>{current.text}</span>
+              <span className="m3-body-medium">{current.text}</span>
               {current.action && (
                 <button
                   onClick={() => {
                     current.action?.onClick();
                     dismiss(current.id);
                   }}
-                  className="shrink-0 rounded-lg px-1 py-0.5 text-sm font-semibold"
+                  className="m3-label-large shrink-0 rounded-lg px-1 py-0.5"
                   style={{ color: "var(--m3-inverse-primary)" }}
                 >
                   {current.action.label}

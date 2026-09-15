@@ -148,7 +148,7 @@ function SetupWizard() {
               <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
                 <HubMark size={64} />
                 <div>
-                  <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
+                  <h1 className="m3-headline-small" style={{ color: "var(--ink)" }}>
                     Welcome to HomeHub
                   </h1>
                   <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -162,7 +162,7 @@ function SetupWizard() {
             {step === 1 && (
               <div className="flex flex-1 flex-col gap-5">
                 <div>
-                  <h2 className="text-xl font-semibold" style={{ color: "var(--ink)" }}>
+                  <h2 className="m3-title-large" style={{ color: "var(--ink)" }}>
                     A little about your home
                   </h2>
                   <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -193,7 +193,7 @@ function SetupWizard() {
             {step === 2 && (
               <div className="flex flex-1 flex-col gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold" style={{ color: "var(--ink)" }}>
+                  <h2 className="m3-title-large" style={{ color: "var(--ink)" }}>
                     Connect your accounts
                   </h2>
                   <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -209,7 +209,7 @@ function SetupWizard() {
             {step === 3 && tiles && (
               <div className="flex flex-1 flex-col gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold" style={{ color: "var(--ink)" }}>
+                  <h2 className="m3-title-large" style={{ color: "var(--ink)" }}>
                     Choose your tiles
                   </h2>
                   <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
@@ -269,7 +269,7 @@ function SetupWizard() {
               <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
                 <HubMark size={64} />
                 <div>
-                  <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
+                  <h1 className="m3-headline-small" style={{ color: "var(--ink)" }}>
                     All set, {name}
                   </h1>
                   <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: "var(--ink-soft)" }}>

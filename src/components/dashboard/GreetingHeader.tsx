@@ -58,21 +58,21 @@ export function GreetingHeader({ householdName }: { householdName: string }) {
     <motion.header initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         <AnimatePresence mode="wait">
-          <motion.p key={now ? greetingFor(now.getHours()) : "hello"} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="text-2xl font-semibold tracking-tight sm:text-3xl" style={{ color: "var(--ink)" }}>
+          <motion.p key={now ? greetingFor(now.getHours()) : "hello"} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="m3-headline-small" style={{ color: "var(--ink)" }}>
             {now ? greetingFor(now.getHours()) : "Hello"}, {householdName}
           </motion.p>
         </AnimatePresence>
         <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
           <div>
-            <p className="text-5xl font-semibold tracking-tight sm:text-6xl" style={{ color: "var(--ink)" }}>{now ? now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "--:--"}</p>
-            <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>{now?.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+            <p className="m3-display-medium" style={{ color: "var(--ink)" }}>{now ? now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "--:--"}</p>
+            <p className="m3-body-medium mt-1" style={{ color: "var(--ink-soft)" }}>{now?.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
           </div>
           {weather && (
             <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "var(--glass-fill-strong)", color: "var(--ink)" }}>
               {weatherIcon(weather.code)}
               <div>
-                <p className="text-xl font-semibold leading-none">{weather.temperature}°F</p>
-                <p className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3" />{weather.location}</p>
+                <p className="m3-title-large leading-none">{weather.temperature}°F</p>
+                <p className="m3-label-small mt-1 flex items-center gap-1" style={{ color: "var(--ink-soft)" }}><Icon name="location_on" className="h-3 w-3" />{weather.location}</p>
               </div>
             </div>
           )}

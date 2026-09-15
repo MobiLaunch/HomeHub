@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useRipple } from "@/hooks/useRipple";
 import { useSnackbar } from "@/hooks/useSnackbar";
+import { spatial } from "@/lib/motion";
 
 const STICKER_PALETTE = ["⭐", "❤️", "🎉", "☕️", "🌿", "🐶", "🏀", "🎵", "📌", "✅"];
 const NOTE_COLORS = ["#fde68a", "#a7f3d0", "#bfdbfe", "#fbcfe8", "#ddd6fe"];
@@ -81,7 +82,7 @@ export function DashboardFab() {
               initial={{ opacity: 0, y: 12, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.8 }}
-              transition={{ type: "spring", stiffness: 500, damping: 26 }}
+              transition={spatial.fast}
               className="flex flex-col gap-3"
             >
               <MiniFab icon="sticky_note_2" label="Add note" onClick={() => togglePanel("note")} highlighted={panel === "note"} />
@@ -94,8 +95,13 @@ export function DashboardFab() {
           onClick={() => setPanel((p) => (p ? null : "note"))}
           onPointerDown={fabRippleDown}
           whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.93 }}
-          className="ripple-surface flex h-16 w-16 items-center justify-center rounded-3xl"
+          whileTap={{ scale: 0.93, borderRadius: 16 }}
+          // Shape morphing, an M3 Expressive signature: the FAB tightens
+          // from its resting "large" round shape into a squircle while the
+          // speed-dial is open, then springs back on close.
+          animate={{ borderRadius: panel ? 20 : 28 }}
+          transition={spatial.default}
+          className="ripple-surface flex h-16 w-16 items-center justify-center"
           style={{
             background: "var(--m3-tertiary-container)",
             color: "var(--m3-on-tertiary-container)",
@@ -104,7 +110,7 @@ export function DashboardFab() {
           aria-label={panel ? "Close quick add" : "Quick add"}
         >
           {fabRipple}
-          <motion.span animate={{ rotate: panel ? 135 : 0 }} transition={{ type: "spring", stiffness: 400, damping: 22 }}>
+          <motion.span animate={{ rotate: panel ? 135 : 0 }} transition={spatial.fast}>
             <Icon name="add" className="h-6 w-6" weight={600} />
           </motion.span>
         </motion.button>
