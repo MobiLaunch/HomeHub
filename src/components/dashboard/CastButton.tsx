@@ -30,6 +30,9 @@ export function CastButton() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    // Feature detection has to happen after mount to avoid a server/client
+    // hydration mismatch (the Presentation API doesn't exist server-side).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(
       typeof navigator !== "undefined" &&
         "presentation" in navigator &&

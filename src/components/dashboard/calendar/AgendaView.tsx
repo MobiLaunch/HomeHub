@@ -41,6 +41,7 @@ export function AgendaView({
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
 }) {
+  // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   const upcoming = events.filter((e) => new Date(e.end ?? e.start).getTime() >= cutoff).slice(0, 30);
 
@@ -55,7 +56,9 @@ export function AgendaView({
     );
   }
 
-  const nextEvent = upcoming.find((event) => new Date(event.start).getTime() >= Date.now());
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const nextEvent = upcoming.find((event) => new Date(event.start).getTime() >= nowMs);
   const grouped = upcoming.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
     const key = dayKey(event.start);
     (groups[key] ??= []).push(event);

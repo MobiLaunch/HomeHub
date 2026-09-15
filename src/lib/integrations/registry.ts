@@ -119,7 +119,17 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
     requiresClientSecret: false,
     authorizeUrl: "https://accounts.spotify.com/authorize",
     tokenUrl: "https://accounts.spotify.com/api/token",
-    scopes: ["user-read-playback-state", "user-read-currently-playing", "user-read-recently-played"],
+    // Superseded by SPOTIFY_SCOPES in ./spotify.ts, which is what the
+    // dedicated spotify/connect + spotify/callback routes actually use
+    // (Spotify auth runs through its own PKCE flow, not the generic OAuth
+    // routes below) — kept in sync here only so this doesn't mislead.
+    scopes: [
+      "user-read-playback-state",
+      "user-read-currently-playing",
+      "user-read-recently-played",
+      "user-modify-playback-state",
+      "streaming",
+    ],
   },
   apple: {
     authType: "credentials",

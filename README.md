@@ -85,7 +85,7 @@ short:
 | Microsoft 365 (Outlook + Teams) | `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Azure Entra ID → App registration |
 | Slack | `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` | api.slack.com/apps |
 | Facebook Page | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | developers.facebook.com/apps |
-| Spotify | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | developer.spotify.com/dashboard |
+| Spotify | `SPOTIFY_CLIENT_ID` (PKCE, no secret) | developer.spotify.com/dashboard |
 | Apple Calendar (iCloud) | Apple ID + app-specific password | Entered directly in Settings — no env vars |
 
 Add the ones you have to `.env`, restart `npm run dev`, then go to
@@ -123,11 +123,30 @@ A couple of honest platform limits, so the tiles don't over-promise:
   scope, which many organizational tenants gate behind admin consent. The
   Messages tile degrades gracefully (just shows nothing from that source)
   rather than erroring if it isn't granted.
-- **Spotify shows, not plays**: the widget displays what's currently (or
-  most recently) playing and links tracks out to open in Spotify — it
-  doesn't control playback in-browser. That needs Spotify's Web Playback
-  SDK and a Premium account on the connected side; reading now-playing data
-  doesn't.
+- **Spotify in-app playback needs Premium**: the widget can register this
+  browser tab as a Spotify Connect device (Spotify's Web Playback SDK) and
+  play/pause/skip/seek right on the dashboard via the **Play here** button.
+  That only works for Premium accounts — a Free account can still connect
+  and see what's currently (or most recently) playing, with tracks linking
+  out to open in Spotify, but the SDK refuses to actually play audio for it.
+
+### Spotify: in-app playback
+
+Playing music directly on the dashboard (rather than just showing what's
+playing) needs the `streaming` and `user-modify-playback-state` scopes,
+added on top of the original read-only ones, plus the Web Playback SDK
+enabled for your app (Settings → APIs used, in the Spotify Developer
+Dashboard). **If you connected Spotify before this shipped, disconnect and
+reconnect it in Settings** — same reason as the calendar scopes above, a
+stored token only carries what it was granted at connect time.
+
+Once reconnected, a **Play here** pill appears under the track info whenever
+Spotify is connected; tapping it transfers active playback to this browser
+tab and shows a small transport (progress bar, previous/play-pause/next).
+It stays in sync with real Spotify Connect state — switching devices from
+your phone or another app hands control back automatically, since the
+widget just reflects whatever the Web Playback SDK reports for this
+device.
 
 ## Tech
 

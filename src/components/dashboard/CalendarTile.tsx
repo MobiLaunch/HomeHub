@@ -35,6 +35,7 @@ export function CalendarTile() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const showSnackbar = useSnackbar();
 
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const upcoming = events
     .filter((e) => new Date(e.end ?? e.start).getTime() >= now)
@@ -110,7 +111,9 @@ export function CalendarTile() {
 function NextUp({ event, onSelect }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void }) {
   const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
   const start = new Date(event.start);
-  const delta = start.getTime() - Date.now();
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const delta = start.getTime() - nowMs;
   const relative = delta <= 0 ? "Now" : delta < 3_600_000 ? `In ${Math.max(1, Math.round(delta / 60_000))} min` : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
     <button onClick={() => onSelect(event)} onPointerDown={onPointerDown} className="ripple-surface relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left" style={{ background: "var(--accent-soft)", color: "var(--ink)" }}>

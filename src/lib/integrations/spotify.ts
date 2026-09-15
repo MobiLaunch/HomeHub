@@ -11,6 +11,12 @@ export const SPOTIFY_SCOPES = [
   "user-read-playback-state",
   "user-read-currently-playing",
   "user-read-recently-played",
+  // Needed for in-app playback via the Web Playback SDK: `streaming` lets
+  // this browser tab register as a Spotify Connect device, and
+  // `user-modify-playback-state` lets it (or any other connected device)
+  // be controlled — play/pause/skip/seek — from the dashboard.
+  "user-modify-playback-state",
+  "streaming",
 ] as const;
 
 export function spotifyClientId(): string {
