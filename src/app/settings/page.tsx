@@ -19,6 +19,7 @@ const TILE_META: Record<string, { label: string; icon: string }> = {
   corkboard: { label: "Corkboard", icon: "push_pin" },
   facebook_insights: { label: "Page insights", icon: "thumb_up" },
   spotify: { label: "Now playing", icon: "graphic_eq" },
+  home_status: { label: "Home", icon: "home" },
 };
 
 function SettingsBanner() {

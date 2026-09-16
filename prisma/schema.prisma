@@ -29,6 +29,7 @@ enum IntegrationProvider {
   facebook
   apple
   spotify
+  homebridge
 }
 
 enum IntegrationStatus {

@@ -26,6 +26,7 @@ import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
 import { Corkboard } from "@/components/dashboard/Corkboard";
 import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTile";
 import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
+import { HomeStatusTile } from "@/components/dashboard/HomeStatusTile";
 import { DashboardFab } from "@/components/dashboard/DashboardFab";
 import { CastButton } from "@/components/dashboard/CastButton";
 import { TileActivityProvider } from "@/hooks/useTileActivity";
@@ -52,6 +53,11 @@ const TILE_REGISTRY: Record<
     title: "Now playing",
     icon: <Icon name="graphic_eq" />,
     render: (opts) => <SpotifyWidget expanded={opts?.expanded} />,
+  },
+  home_status: {
+    title: "Home",
+    icon: <Icon name="home" />,
+    render: (opts) => <HomeStatusTile expanded={opts?.expanded} />,
   },
 };
 

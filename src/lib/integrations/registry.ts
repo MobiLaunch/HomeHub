@@ -146,6 +146,16 @@ export const PROVIDERS: Record<IntegrationProvider, ProviderConfig> = {
       },
     ],
   },
+  homebridge: {
+    authType: "credentials",
+    id: "homebridge",
+    displayName: "Home Status",
+    description: "Lights, locks, and climate via the homebridge-homehub plugin on your network.",
+    fields: [
+      { name: "baseUrl", label: "Bridge URL", type: "text", placeholder: "http://192.168.1.20:8582" },
+      { name: "token", label: "Bearer Token", type: "password", placeholder: "the httpApi.token from config.json" },
+    ],
+  },
 };
 
 export type ProviderConfig = OAuthProviderConfig | CredentialProviderConfig;

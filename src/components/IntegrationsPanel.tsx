@@ -18,7 +18,7 @@ type ProviderAccount = {
 };
 
 type ProviderInfo = {
-  id: "google" | "microsoft" | "slack" | "facebook" | "apple" | "spotify";
+  id: "google" | "microsoft" | "slack" | "facebook" | "apple" | "spotify" | "homebridge";
   displayName: string;
   description: string;
   authType: "oauth" | "credentials";
@@ -35,6 +35,7 @@ const BRAND: Record<ProviderInfo["id"], { mark: string; className: string }> = {
   facebook: { mark: "f", className: "bg-[#1877f2] text-white" },
   apple: { mark: "", className: "bg-black text-white" },
   spotify: { mark: "●", className: "bg-[#1db954] text-white" },
+  homebridge: { mark: "⌂", className: "bg-white text-[#5e35b1] shadow-sm" },
 };
 
 export function IntegrationsPanel({ returnTo }: { returnTo: "setup" | "settings" }) {
@@ -107,6 +108,28 @@ function ProviderCard({ provider, index, returnTo, onDisconnect }: { provider: P
     }
   }
 
+  const { onPointerDown: bridgeRippleDown, rippleLayer: bridgeRipple } = useRipple<HTMLButtonElement>();
+  const [bridgeForm, setBridgeForm] = useState({ baseUrl: "", token: "" });
+  const [bridgeBusy, setBridgeBusy] = useState(false);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+
+  async function connectBridge(e: React.FormEvent) {
+    e.preventDefault();
+    setBridgeBusy(true);
+    setBridgeError(null);
+    try {
+      const res = await fetch("/api/integrations/homebridge/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bridgeForm) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Could not connect");
+      setBridgeForm({ baseUrl: "", token: "" });
+      mutate(INTEGRATIONS_URL);
+    } catch (err) {
+      setBridgeError((err as Error).message);
+    } finally {
+      setBridgeBusy(false);
+    }
+  }
+
   return (
     <motion.div ref={glowRef} onPointerMove={glowMove} onPointerLeave={glowLeave} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }} className="glass glow flex h-full flex-col gap-3 p-5">
       <div className="relative z-10 flex items-start gap-3">
@@ -144,7 +167,7 @@ function ProviderCard({ provider, index, returnTo, onDisconnect }: { provider: P
         </motion.a>
       )}
 
-      {provider.authType === "credentials" && (
+      {provider.authType === "credentials" && provider.id === "apple" && (
         <form onSubmit={connectApple} className="relative z-10 flex flex-col gap-2">
           <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}><BrandMark provider={provider.id} /><span>Apple requires an app-specific password for iCloud CalDAV access.</span></div>
           <input type="email" required placeholder="Apple ID" value={appleForm.appleId} onChange={(e) => setAppleForm((f) => ({ ...f, appleId: e.target.value }))} className="glass-pill px-3 py-2 text-sm outline-none transition-shadow focus:ring-2" style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties} />
@@ -153,6 +176,19 @@ function ProviderCard({ provider, index, returnTo, onDisconnect }: { provider: P
           {appleError && <p className="text-xs text-rose-500">{appleError}</p>}
           <motion.button type="submit" disabled={appleBusy} onPointerDown={appleRippleDown} whileTap={{ scale: 0.97 }} className="ripple-surface glass-pill flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50" style={{ color: "var(--ink)" }}>
             {appleRipple}<BrandMark provider={provider.id} />{appleBusy ? "Connecting…" : "Connect Apple Calendar"}
+          </motion.button>
+        </form>
+      )}
+
+      {provider.authType === "credentials" && provider.id === "homebridge" && (
+        <form onSubmit={connectBridge} className="relative z-10 flex flex-col gap-2">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: "var(--glass-fill-strong)", color: "var(--ink-soft)" }}><BrandMark provider={provider.id} /><span>Needs the homebridge-homehub plugin running on your network.</span></div>
+          <input type="text" required placeholder="Bridge URL (e.g. http://192.168.1.20:8582)" value={bridgeForm.baseUrl} onChange={(e) => setBridgeForm((f) => ({ ...f, baseUrl: e.target.value }))} className="glass-pill px-3 py-2 text-sm outline-none transition-shadow focus:ring-2" style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties} />
+          <input type="password" required placeholder="Bearer token" value={bridgeForm.token} onChange={(e) => setBridgeForm((f) => ({ ...f, token: e.target.value }))} className="glass-pill px-3 py-2 text-sm outline-none transition-shadow focus:ring-2" style={{ color: "var(--ink)", "--tw-ring-color": "var(--accent-soft)" } as React.CSSProperties} />
+          <p className="text-[11px] leading-snug" style={{ color: "var(--ink-soft)" }}>The same token you set as httpApi.token in the plugin&apos;s config.json.</p>
+          {bridgeError && <p className="text-xs text-rose-500">{bridgeError}</p>}
+          <motion.button type="submit" disabled={bridgeBusy} onPointerDown={bridgeRippleDown} whileTap={{ scale: 0.97 }} className="ripple-surface glass-pill flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium disabled:opacity-50" style={{ color: "var(--ink)" }}>
+            {bridgeRipple}<BrandMark provider={provider.id} />{bridgeBusy ? "Connecting…" : "Connect Home Status"}
           </motion.button>
         </form>
       )}

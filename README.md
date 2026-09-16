@@ -107,6 +107,7 @@ short:
 | Facebook Page | `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | developers.facebook.com/apps |
 | Spotify | `SPOTIFY_CLIENT_ID` (PKCE, no secret) | developer.spotify.com/dashboard |
 | Apple Calendar (iCloud) | Apple ID + app-specific password | Entered directly in Settings — no env vars |
+| Home Status (lights/locks/climate) | Bridge URL + bearer token | Run the `homebridge-homehub` plugin (see below), enter its URL/token directly in Settings — no env vars |
 
 Add the ones you have to `.env`, restart `npm run dev`, then go to
 **Settings → Connected accounts** and click Connect. Every redirect URI is
@@ -168,6 +169,25 @@ your phone or another app hands control back automatically, since the
 widget just reflects whatever the Web Playback SDK reports for this
 device.
 
+### Home Status: lights, locks, and climate
+
+Unlike every other tile, this one doesn't talk to a vendor's cloud API
+directly — there isn't one unified API across lock/light/thermostat brands.
+Instead it talks to **[`homebridge-homehub`](./homebridge-homehub)**, a
+Homebridge plugin that ships in this repo as its own self-contained package.
+You run that plugin (as part of a Homebridge instance) on your own network,
+point it at your actual devices — Kasa/Tapo lights, an Ecobee thermostat, an
+August lock, see its own README for setup — and it exposes a small local
+HTTP API that this tile polls and controls through. Paste that plugin's URL
+and bearer token into **Settings → Connected accounts → Home Status**.
+
+Control is one tap, no confirmation step — toggling a light, lock, or
+thermostat target from the dashboard takes effect immediately, the same as
+tapping it in Homebridge's own UI. Because Home Status needs a plugin
+running on your own network rather than a public OAuth flow, it's the one
+integration that can't be wired up from `.env` — the connection lives
+entirely in Settings, same as Apple Calendar's app-specific password.
+
 ## Tech
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS v4 ·
@@ -189,3 +209,6 @@ roles/elevation in `src/app/globals.css`.
   Agenda/Week/Month/Year views plus the new/delete-event UI.
 - `prisma/schema.prisma` — data model (Household, Integration, Note, Sticker,
   TilePreference).
+- `homebridge-homehub/` — the companion Homebridge plugin for the Home Status
+  tile. A separate self-contained package (own `package.json`/build/lint/
+  test), not part of the Next.js app — see its own README.

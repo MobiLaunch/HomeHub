@@ -8,6 +8,7 @@ const DEFAULT_TILES = [
   { tileType: "corkboard", position: 3, size: "lg" },
   { tileType: "facebook_insights", position: 5, size: "md" },
   { tileType: "spotify", position: 6, size: "md" },
+  { tileType: "home_status", position: 7, size: "md" },
 ];
 
 export async function GET() {
