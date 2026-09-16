@@ -1,0 +1,83 @@
+{
+  "pluginAlias": "HomeHubBridge",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Bridges Kasa/Tapo lights, an Ecobee thermostat, and August locks into HomeKit, and exposes them to the HomeHub dashboard over a local HTTP API.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform name",
+        "type": "string",
+        "default": "HomeHub Bridge",
+        "required": true
+      },
+      "httpApi": {
+        "title": "HomeHub HTTP API",
+        "type": "object",
+        "properties": {
+          "port": {
+            "title": "Port",
+            "type": "integer",
+            "default": 8582
+          },
+          "token": {
+            "title": "Bearer token (paste this same value into HomeHub's Settings)",
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "kasaDevices": {
+        "title": "Kasa / Tapo devices",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "title": "Name", "type": "string", "required": true },
+            "host": { "title": "IP address", "type": "string", "required": true },
+            "protocol": {
+              "title": "Protocol",
+              "type": "string",
+              "default": "kasa",
+              "oneOf": [
+                { "title": "Kasa (legacy XOR-TCP)", "enum": ["kasa"] },
+                { "title": "Tapo (securePassthrough)", "enum": ["tapo"] }
+              ]
+            },
+            "tapoUsername": { "title": "Tapo account email (Tapo only)", "type": "string" },
+            "tapoPassword": { "title": "Tapo account password (Tapo only)", "type": "string" }
+          }
+        }
+      },
+      "ecobee": {
+        "title": "Ecobee",
+        "type": "object",
+        "properties": {
+          "apiKey": { "title": "API key (from the Ecobee developer portal)", "type": "string" },
+          "refreshToken": {
+            "title": "Refresh token (filled in automatically after the one-time PIN authorization — see README)",
+            "type": "string"
+          }
+        }
+      },
+      "august": {
+        "title": "August",
+        "type": "object",
+        "properties": {
+          "email": { "title": "Account email", "type": "string" },
+          "password": { "title": "Account password", "type": "string" },
+          "installId": {
+            "title": "Install ID (generated automatically on first run, then persisted here)",
+            "type": "string"
+          },
+          "lockId": {
+            "title": "Lock ID (fill in after running listAugustLocks once verified — see README)",
+            "type": "string"
+          },
+          "lockName": { "title": "Lock name shown in HomeKit", "type": "string", "default": "Front Door" }
+        }
+      }
+    }
+  }
+}

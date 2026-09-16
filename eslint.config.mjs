@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Its own self-contained package with its own eslint config (see
+    // homebridge-homehub/eslint.config.js) — a separate Node/ESM Homebridge
+    // plugin, not part of the Next.js app.
+    "homebridge-homehub/**",
   ]),
 ]);
 
