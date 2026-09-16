@@ -27,10 +27,30 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const body = (await request.json()) as { tileType: string; enabled?: boolean; position?: number };
+  const body = (await request.json()) as {
+    tileType: string;
+    enabled?: boolean;
+    position?: number;
+    size?: string;
+  };
   const tile = await db.tilePreference.update({
     where: { tileType: body.tileType },
-    data: { enabled: body.enabled, position: body.position },
+    data: { enabled: body.enabled, position: body.position, size: body.size },
   });
   return NextResponse.json({ tile });
+}
+
+/**
+ * Persists a full drag-reorder in one go: `order` is every tileType in its
+ * new top-to-bottom position, so this recomputes position 0..n rather than
+ * requiring the client to figure out individual position deltas.
+ */
+export async function PUT(request: Request) {
+  const body = (await request.json()) as { order: string[] };
+  await db.$transaction(
+    body.order.map((tileType, position) =>
+      db.tilePreference.update({ where: { tileType }, data: { position } }),
+    ),
+  );
+  return NextResponse.json({ ok: true });
 }

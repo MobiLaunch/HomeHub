@@ -1,9 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Icon } from "@/components/Icon";
 import { GreetingHeader } from "@/components/dashboard/GreetingHeader";
 import { Tile } from "@/components/dashboard/Tile";
+import { SortableTile } from "@/components/dashboard/SortableTile";
+import { CustomizeToolbar } from "@/components/dashboard/CustomizeToolbar";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
 import { MessagesTile } from "@/components/dashboard/MessagesTile";
 import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
@@ -12,9 +24,8 @@ import { FacebookInsightsTile } from "@/components/dashboard/FacebookInsightsTil
 import { SpotifyWidget } from "@/components/dashboard/SpotifyWidget";
 import { DashboardFab } from "@/components/dashboard/DashboardFab";
 import { CastButton } from "@/components/dashboard/CastButton";
-import { TileActivityProvider, useTileActivitySnapshot } from "@/hooks/useTileActivity";
-
-type TilePref = { tileType: string; enabled: boolean; position: number; size: "sm" | "md" | "lg" };
+import { TileActivityProvider } from "@/hooks/useTileActivity";
+import { useDashboardLayout, type TileSize } from "@/hooks/useDashboardLayout";
 
 const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; render: () => React.ReactNode }> = {
   calendar: { title: "Family calendar", icon: <Icon name="calendar_month" />, render: () => <CalendarTile /> },
@@ -39,24 +50,28 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const [householdName, setHouseholdName] = useState("Home");
-  const [tiles, setTiles] = useState<TilePref[] | null>(null);
-  const activity = useTileActivitySnapshot();
+  const { displayTiles, customizing, setCustomizing, reorder, resize } = useDashboardLayout();
 
   useEffect(() => {
     fetch("/api/household").then((r) => r.json()).then((json) => setHouseholdName(json.household?.name ?? "Home"));
-    fetch("/api/tiles").then((r) => r.json()).then((json) => setTiles(json.tiles));
   }, []);
 
-  const visibleTiles = (tiles ?? []).filter((t) => t.enabled && TILE_REGISTRY[t.tileType]).sort((a, b) => a.position - b.position);
-  const calendar = visibleTiles.find((t) => t.tileType === "calendar");
+  const tiles = displayTiles.filter((t) => TILE_REGISTRY[t.tileType]);
 
-  // Tiles reorder and grow live: whichever secondary tile currently has the
-  // highest reported activity score moves to the front. On phones they become
-  // a native-feeling horizontal snap carousel; larger screens retain the grid.
-  const secondary = visibleTiles
-    .filter((t) => t.tileType !== "calendar")
-    .map((t) => ({ ...t, ...(activity[t.tileType] ?? { score: 0, boostSize: false }) }))
-    .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.position - b.position));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = tiles.map((t) => t.tileType);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    reorder(arrayMove(ids, oldIndex, newIndex));
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -64,48 +79,71 @@ function DashboardContent() {
         <div className="min-w-0 flex-1">
           <GreetingHeader householdName={householdName} />
         </div>
-        <div className="shrink-0 pt-1">
+        <div className="flex shrink-0 items-center gap-2 pt-1">
+          <button
+            onClick={() => setCustomizing((c) => !c)}
+            className="glass-pill flex items-center gap-1.5 px-3.5 py-2"
+            style={{ color: customizing ? "var(--accent)" : "var(--ink-soft)" }}
+            aria-pressed={customizing}
+          >
+            <Icon name="dashboard_customize" className="h-4 w-4" filled={customizing} />
+            <span className="m3-label-large hidden sm:inline">{customizing ? "Editing" : "Customize"}</span>
+          </button>
           <CastButton />
         </div>
       </div>
 
-      {calendar && (
-        <Tile
-          title={TILE_REGISTRY.calendar.title}
-          icon={TILE_REGISTRY.calendar.icon}
-          size="lg"
-          index={0}
-          active={(activity.calendar?.score ?? 0) > 0}
-        >
-          <CalendarTile />
-        </Tile>
-      )}
-
-      {secondary.length > 0 && (
-        <div
-          className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3"
-          style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none", touchAction: "pan-x pan-y" }}
-          aria-label="Dashboard cards"
-        >
-          {secondary.map((tile, index) => {
-            const meta = TILE_REGISTRY[tile.tileType];
-            return (
-              <div key={tile.tileType} className="w-[calc(100vw-2rem)] shrink-0 snap-center sm:w-auto sm:shrink">
-                <Tile
-                  title={meta.title}
-                  icon={meta.icon}
-                  size={tile.boostSize ? "lg" : tile.size}
-                  index={index + 1}
-                  active={tile.boostSize}
-                >
-                  {meta.render()}
-                </Tile>
+      {tiles.length > 0 &&
+        (customizing ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={tiles.map((t) => t.tileType)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {tiles.map((tile, index) => {
+                  const meta = TILE_REGISTRY[tile.tileType];
+                  return (
+                    <SortableTile
+                      key={tile.tileType}
+                      id={tile.tileType}
+                      title={meta.title}
+                      icon={meta.icon}
+                      size={tile.size}
+                      index={index}
+                      customizing
+                      onResize={(size: TileSize) => resize(tile.tileType, size)}
+                    >
+                      {meta.render()}
+                    </SortableTile>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
-      <DashboardFab />
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div
+            className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3"
+            style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none", touchAction: "pan-x pan-y" }}
+            aria-label="Dashboard cards"
+          >
+            {tiles.map((tile, index) => {
+              const meta = TILE_REGISTRY[tile.tileType];
+              const size = tile.boostSize ? "xl" : tile.size;
+              return (
+                <div
+                  key={tile.tileType}
+                  className={`w-[calc(100vw-2rem)] shrink-0 snap-center sm:w-auto sm:shrink ${
+                    size === "lg" ? "sm:col-span-2" : size === "xl" ? "sm:col-span-2 lg:col-span-3" : ""
+                  }`}
+                >
+                  <Tile title={meta.title} icon={meta.icon} size={size} index={index} active={tile.boostSize}>
+                    {meta.render()}
+                  </Tile>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+      {customizing ? <CustomizeToolbar onDone={() => setCustomizing(false)} /> : <DashboardFab />}
     </main>
   );
 }

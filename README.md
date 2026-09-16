@@ -22,6 +22,11 @@ you connect it. It does need a real Postgres database, though — see below.
   draggable emoji sticker board.
 - A floating quick-add button on the dashboard for adding a note or sticker
   from anywhere, without scrolling to those tiles.
+- **Customizable dashboard**: tap Customize to drag-reorder tiles and resize
+  them (Compact/Standard/Wide/Large), with a spring-animated reflow as you
+  go. The arrangement persists to the database. Live activity-based
+  reordering (a busy tile temporarily growing/moving up) pauses while
+  you're editing, so it doesn't fight your drag.
 - **Settings panel** to connect/disconnect every integration, toggle tiles,
   edit household name/timezone, and switch light/dark/system appearance.
 - OAuth tokens (and the Apple app-specific password) are encrypted at rest
