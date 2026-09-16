@@ -37,13 +37,15 @@ function mapsUrl(location: string) {
 export function AgendaView({
   events,
   onSelect,
+  limit = 30,
 }: {
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
+  limit?: number;
 }) {
   // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  const upcoming = events.filter((e) => new Date(e.end ?? e.start).getTime() >= cutoff).slice(0, 30);
+  const upcoming = events.filter((e) => new Date(e.end ?? e.start).getTime() >= cutoff).slice(0, limit);
 
   if (upcoming.length === 0) {
     return (

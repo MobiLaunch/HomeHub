@@ -26,7 +26,7 @@ const VIEWS: { value: ViewMode; label: string }[] = [
   { value: "year", label: "Year" },
 ];
 
-export function CalendarTile() {
+export function CalendarTile({ expanded = false }: { expanded?: boolean }) {
   const { data, isLoading } = useLive<{ events: CalendarEvent[] }>(CALENDAR_URL, 60_000);
   const events = data?.events ?? [];
   const [view, setView] = useState<ViewMode>("agenda");
@@ -90,12 +90,12 @@ export function CalendarTile() {
       </div>
 
       {upcoming.length > 0 && (
-        <NextUp event={upcoming[0]} onSelect={setSelectedEvent} />
+        <NextUp event={upcoming[0]} onSelect={setSelectedEvent} large={expanded} />
       )}
 
       <AnimatePresence mode="wait">
         <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
-          {view === "agenda" && <AgendaView events={events} onSelect={setSelectedEvent} />}
+          {view === "agenda" && <AgendaView events={events} onSelect={setSelectedEvent} limit={expanded ? 60 : 30} />}
           {view === "week" && <WeekView events={events} anchor={anchor} onSelect={setSelectedEvent} />}
           {view === "month" && <MonthView events={events} anchor={anchor} onDayClick={(day) => { setAnchor(day); setView("week"); }} />}
           {view === "year" && <YearView events={events} anchor={anchor} onMonthClick={(monthAnchor) => { setAnchor(monthAnchor); setView("month"); }} onDayClick={(day) => { setAnchor(day); setView("week"); }} />}
@@ -108,7 +108,7 @@ export function CalendarTile() {
   );
 }
 
-function NextUp({ event, onSelect }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void }) {
+function NextUp({ event, onSelect, large = false }: { event: CalendarEvent; onSelect: (event: CalendarEvent) => void; large?: boolean }) {
   const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
   const start = new Date(event.start);
   // eslint-disable-next-line react-hooks/purity
@@ -116,14 +116,21 @@ function NextUp({ event, onSelect }: { event: CalendarEvent; onSelect: (event: C
   const delta = start.getTime() - nowMs;
   const relative = delta <= 0 ? "Now" : delta < 3_600_000 ? `In ${Math.max(1, Math.round(delta / 60_000))} min` : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
-    <button onClick={() => onSelect(event)} onPointerDown={onPointerDown} className="ripple-surface relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left" style={{ background: "var(--accent-soft)", color: "var(--ink)" }}>
+    <button
+      onClick={() => onSelect(event)}
+      onPointerDown={onPointerDown}
+      className={`ripple-surface relative flex w-full items-center gap-3 overflow-hidden rounded-2xl text-left ${large ? "min-h-20 px-5 py-4" : "min-h-16 px-4 py-3"}`}
+      style={{ background: "var(--accent-soft)", color: "var(--ink)" }}
+    >
       {rippleLayer}
-      <span className="h-9 w-1 rounded-full" style={{ background: "var(--accent)" }} />
+      <span className={large ? "h-12 w-1.5 rounded-full" : "h-9 w-1 rounded-full"} style={{ background: "var(--accent)" }} />
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>Next up · {relative}</span>
-        <span className="mt-0.5 block truncate text-sm font-semibold">{event.title}</span>
+        <span className={`block font-semibold uppercase tracking-wider ${large ? "text-xs" : "text-[11px]"}`} style={{ color: "var(--accent)" }}>
+          Next up · {relative}
+        </span>
+        <span className={`mt-0.5 block truncate font-semibold ${large ? "m3-title-large" : "text-sm"}`}>{event.title}</span>
       </span>
-      <Icon name="chevron_right" className="h-5 w-5 shrink-0" style={{ color: "var(--ink-soft)" }} />
+      <Icon name="chevron_right" className={large ? "h-6 w-6 shrink-0" : "h-5 w-5 shrink-0"} style={{ color: "var(--ink-soft)" }} />
     </button>
   );
 }

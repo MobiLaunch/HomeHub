@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Icon } from "@/components/Icon";
@@ -16,6 +19,7 @@ import { GreetingHeader } from "@/components/dashboard/GreetingHeader";
 import { Tile } from "@/components/dashboard/Tile";
 import { SortableTile } from "@/components/dashboard/SortableTile";
 import { CustomizeToolbar } from "@/components/dashboard/CustomizeToolbar";
+import { ExpandedTileOverlay } from "@/components/dashboard/ExpandedTileOverlay";
 import { CalendarTile } from "@/components/dashboard/CalendarTile";
 import { MessagesTile } from "@/components/dashboard/MessagesTile";
 import { LiveActivityStack } from "@/components/dashboard/LiveActivityStack";
@@ -27,8 +31,15 @@ import { CastButton } from "@/components/dashboard/CastButton";
 import { TileActivityProvider } from "@/hooks/useTileActivity";
 import { useDashboardLayout, type TileSize } from "@/hooks/useDashboardLayout";
 
-const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; render: () => React.ReactNode }> = {
-  calendar: { title: "Family calendar", icon: <Icon name="calendar_month" />, render: () => <CalendarTile /> },
+const TILE_REGISTRY: Record<
+  string,
+  { title: string; icon: React.ReactNode; render: (opts?: { expanded?: boolean }) => React.ReactNode }
+> = {
+  calendar: {
+    title: "Family calendar",
+    icon: <Icon name="calendar_month" />,
+    render: (opts) => <CalendarTile expanded={opts?.expanded} />,
+  },
   messages: { title: "Messages", icon: <Icon name="forum" />, render: () => <MessagesTile /> },
   notifications: { title: "Live activity", icon: <Icon name="notifications" />, render: () => <LiveActivityStack /> },
   corkboard: { title: "Corkboard", icon: <Icon name="push_pin" />, render: () => <Corkboard /> },
@@ -37,7 +48,11 @@ const TILE_REGISTRY: Record<string, { title: string; icon: React.ReactNode; rend
     icon: <Icon name="thumb_up" />,
     render: () => <FacebookInsightsTile />,
   },
-  spotify: { title: "Now playing", icon: <Icon name="graphic_eq" />, render: () => <SpotifyWidget /> },
+  spotify: {
+    title: "Now playing",
+    icon: <Icon name="graphic_eq" />,
+    render: (opts) => <SpotifyWidget expanded={opts?.expanded} />,
+  },
 };
 
 export default function DashboardPage() {
@@ -50,11 +65,31 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const [householdName, setHouseholdName] = useState("Home");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [expandedTile, setExpandedTile] = useState<string | null>(null);
   const { displayTiles, customizing, setCustomizing, reorder, resize } = useDashboardLayout();
 
   useEffect(() => {
     fetch("/api/household").then((r) => r.json()).then((json) => setHouseholdName(json.household?.name ?? "Home"));
   }, []);
+
+  // Entering customize mode mid-expand would leave the overlay open behind
+  // an editable grid, which is a confusing state to be in — close it.
+  useEffect(() => {
+    if (customizing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpandedTile(null);
+    }
+  }, [customizing]);
+
+  useEffect(() => {
+    if (!expandedTile) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setExpandedTile(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expandedTile]);
 
   const tiles = displayTiles.filter((t) => TILE_REGISTRY[t.tileType]);
 
@@ -63,7 +98,12 @@ function DashboardContent() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const ids = tiles.map((t) => t.tileType);
@@ -72,6 +112,8 @@ function DashboardContent() {
     if (oldIndex === -1 || newIndex === -1) return;
     reorder(arrayMove(ids, oldIndex, newIndex));
   }
+
+  const activeTile = activeId ? TILE_REGISTRY[activeId] : null;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -95,7 +137,13 @@ function DashboardContent() {
 
       {tiles.length > 0 &&
         (customizing ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
+          >
             <SortableContext items={tiles.map((t) => t.tileType)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {tiles.map((tile, index) => {
@@ -117,6 +165,19 @@ function DashboardContent() {
                 })}
               </div>
             </SortableContext>
+            <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}>
+              {activeTile && (
+                <div
+                  className="glass-strong flex items-center gap-2 px-5 py-4"
+                  style={{ boxShadow: "var(--elevation-3)", width: 240, cursor: "grabbing" }}
+                >
+                  <span style={{ color: "var(--accent)" }}>{activeTile.icon}</span>
+                  <span className="m3-title-medium" style={{ color: "var(--ink)" }}>
+                    {activeTile.title}
+                  </span>
+                </div>
+              )}
+            </DragOverlay>
           </DndContext>
         ) : (
           <div
@@ -134,7 +195,16 @@ function DashboardContent() {
                     size === "lg" ? "sm:col-span-2" : size === "xl" ? "sm:col-span-2 lg:col-span-3" : ""
                   }`}
                 >
-                  <Tile title={meta.title} icon={meta.icon} size={size} index={index} active={tile.boostSize}>
+                  <Tile
+                    title={meta.title}
+                    icon={meta.icon}
+                    size={size}
+                    index={index}
+                    active={tile.boostSize}
+                    layoutId={`tile-${tile.tileType}`}
+                    isExpanded={expandedTile === tile.tileType}
+                    onExpand={() => setExpandedTile(tile.tileType)}
+                  >
                     {meta.render()}
                   </Tile>
                 </div>
@@ -144,6 +214,25 @@ function DashboardContent() {
         ))}
 
       {customizing ? <CustomizeToolbar onDone={() => setCustomizing(false)} /> : <DashboardFab />}
+
+      <AnimatePresence>
+        {expandedTile &&
+          TILE_REGISTRY[expandedTile] &&
+          (() => {
+            const meta = TILE_REGISTRY[expandedTile];
+            return (
+              <ExpandedTileOverlay
+                key={expandedTile}
+                layoutId={`tile-${expandedTile}`}
+                title={meta.title}
+                icon={meta.icon}
+                onClose={() => setExpandedTile(null)}
+              >
+                {meta.render({ expanded: true })}
+              </ExpandedTileOverlay>
+            );
+          })()}
+      </AnimatePresence>
     </main>
   );
 }
