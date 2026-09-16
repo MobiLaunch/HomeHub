@@ -247,6 +247,33 @@ body {
   }
 }
 
+/* Time-of-day warmth wash and album-art-derived glow — both JS-driven (see
+   AmbientAuroraField), CSS only owns the cross-fade. */
+.aurora-field-time {
+  position: absolute;
+  inset: 0;
+  transition: background 2.5s ease, opacity 2.5s ease;
+}
+
+.aurora-field-ambient {
+  position: absolute;
+  left: 20%;
+  top: 40%;
+  width: 60vmax;
+  height: 60vmax;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  filter: blur(130px);
+  transition: background 1.4s ease, opacity 1.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-field-time,
+  .aurora-field-ambient {
+    transition: none;
+  }
+}
+
 /* M3 surface container: solid tonal fill + elevation shadow, no blur. Same
    class names as the old glass system so every existing component keeps
    working with zero changes. */

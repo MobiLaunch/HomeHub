@@ -34,6 +34,14 @@ you connect it. It does need a real Postgres database, though — see below.
   expanded view is a genuinely immersive Now Playing screen (large album
   art, big type, full track list); Calendar's shows more of the agenda at
   once. Disabled while customizing.
+- **The dashboard responds to what's actually happening**: a tile that's
+  currently busy (music playing, an event starting soon, unread messages
+  piling up) grows and moves up; the same tile shrinks by a size step and
+  drifts down once it's quiet again — Spotify pausing or Messages emptying
+  out both visibly compact. The background picks up a soft, subtle glow
+  averaged from whatever album art is playing, plus a gentle warm/cool wash
+  that shifts with the time of day. All of it pauses while you're
+  customizing, so it never fights a drag.
 - **Settings panel** to connect/disconnect every integration, toggle tiles,
   edit household name/timezone, and switch light/dark/system appearance.
 - OAuth tokens (and the Apple app-specific password) are encrypted at rest

@@ -7,6 +7,8 @@ import { Icon } from "@/components/Icon";
 import { WavyProgressBar } from "@/components/WavyProgressBar";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
+import { useReportAmbientColor } from "@/hooks/useAmbientColor";
+import { useAverageColor } from "@/hooks/useAverageColor";
 import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
 import type { SpotifyNowPlaying, SpotifyTrack } from "@/lib/integrations/spotify-live";
 
@@ -42,14 +44,19 @@ export function SpotifyWidget({ expanded: immersive = false }: { expanded?: bool
     isPlayingNow,
   );
 
+  const track = isLocalDevice ? player.state!.track : current?.track;
+  // Only tint the background while something is actually playing — a
+  // paused/idle widget shouldn't keep tinging the whole dashboard.
+  const avgAlbumColor = useAverageColor(isPlayingNow ? (track?.albumArtUrl ?? null) : null);
+  useReportAmbientColor(avgAlbumColor);
+
   if (isLoading && !current) {
     return <EmptyState text="Checking Spotify…" />;
   }
-  if (!current) {
+  if (!current || !track) {
     return <EmptyState text="Connect Spotify in Settings to see what's playing." />;
   }
 
-  const track = isLocalDevice ? player.state!.track : current.track;
   const albumTracks = current.albumTracks;
   const showTracks = tracksOpen || immersive;
 

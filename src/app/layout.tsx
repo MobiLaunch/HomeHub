@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Google_Sans } from "next/font/google";
 import { SnackbarProvider } from "@/hooks/useSnackbar";
+import { AmbientColorProvider } from "@/hooks/useAmbientColor";
+import { AmbientAuroraField } from "@/components/AmbientAuroraField";
 import "./globals.css";
 
 const googleSans = Google_Sans({
@@ -41,8 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <div className="aurora-field" aria-hidden="true" />
-        <SnackbarProvider>{children}</SnackbarProvider>
+        <AmbientColorProvider>
+          <AmbientAuroraField />
+          <SnackbarProvider>{children}</SnackbarProvider>
+        </AmbientColorProvider>
       </body>
     </html>
   );

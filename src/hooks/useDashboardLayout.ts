@@ -7,6 +7,12 @@ export type TileSize = "sm" | "md" | "lg" | "xl";
 export type TilePref = { tileType: string; enabled: boolean; position: number; size: TileSize };
 export type DisplayTile = TilePref & { boostSize: boolean };
 
+// A tile that's actively reporting zero activity (idle) compacts by one
+// size step below its saved size — the mirror image of boostSize. A tile
+// that never reports activity at all is untouched (see the `a &&` guard
+// below), so this only affects widgets that opted into context-awareness.
+const SHRINK: Record<TileSize, TileSize> = { xl: "lg", lg: "md", md: "sm", sm: "sm" };
+
 /**
  * Owns the dashboard's layout state: which tiles are enabled, their saved
  * order/size, and a "customizing" mode that pauses the live activity-based
@@ -32,7 +38,13 @@ export function useDashboardLayout() {
   const displayTiles: DisplayTile[] = customizing
     ? visible.map((t) => ({ ...t, boostSize: false }))
     : visible
-        .map((t) => ({ ...t, ...(activity[t.tileType] ?? { score: 0, boostSize: false }) }))
+        .map((t) => {
+          const a = activity[t.tileType];
+          const score = a?.score ?? 0;
+          const boostSize = a?.boostSize ?? false;
+          const size = a && score === 0 && !boostSize ? SHRINK[t.size] : t.size;
+          return { ...t, size, boostSize, score };
+        })
         .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.position - b.position));
 
   const reorder = useCallback(async (order: string[]) => {
