@@ -24,6 +24,20 @@ export interface AugustConfig {
   room?: string
 }
 
+export interface GoogleCastSpeakerConfig {
+  name: string
+  host: string
+  room?: string
+}
+
+export interface AndroidTvConfig {
+  name: string
+  host: string
+  /** Filled in automatically after the one-time on-screen PIN pairing — see README. */
+  cert?: { key: string, cert: string }
+  room?: string
+}
+
 export interface HttpApiConfig {
   port?: number
   token: string
@@ -34,6 +48,8 @@ export interface HomeHubBridgeConfig extends PlatformConfig {
   kasaDevices?: KasaDeviceConfig[]
   ecobee?: EcobeeConfig
   august?: AugustConfig
+  googleCastSpeakers?: GoogleCastSpeakerConfig[]
+  androidTvs?: AndroidTvConfig[]
 }
 
 export function isHomeHubBridgeConfig(config: PlatformConfig): config is HomeHubBridgeConfig {

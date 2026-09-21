@@ -1,10 +1,12 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service } from 'homebridge'
 import type { HomeHubBridgeConfig } from './config.js'
-import type { ClimateDevice, Device, LightDevice, LockDevice } from './devices/types.js'
+import type { ClimateDevice, Device, LightDevice, LockDevice, PlaybackState, SpeakerDevice, TvDevice, TvRemoteKey } from './devices/types.js'
 import { isHomeHubBridgeConfig } from './config.js'
 import { updatePlatformConfig } from './configStore.js'
+import { createAndroidTv } from './devices/androidtv.js'
 import { createAugustLock, generateAugustInstallId } from './devices/august.js'
 import { createEcobeeThermostat } from './devices/ecobee.js'
+import { createGoogleCastSpeaker } from './devices/googlecast.js'
 import { createKasaLight } from './devices/kasa.js'
 import { createTapoLight } from './devices/tapo.js'
 import { startHttpApi } from './httpApi.js'
@@ -101,6 +103,34 @@ export class HomeHubBridgePlatform implements DynamicPlatformPlugin {
       }
     }
 
+    for (const speakerConfig of config.googleCastSpeakers ?? []) {
+      const id = `cast-${speakerConfig.host}`
+      const speaker = createGoogleCastSpeaker(id, speakerConfig.name, speakerConfig.host, speakerConfig.room)
+      this.devices.push(speaker)
+      this.setupSpeakerAccessory(speaker)
+    }
+
+    config.androidTvs?.forEach((tvConfig, index) => {
+      const id = `androidtv-${tvConfig.host}`
+      const tv = createAndroidTv(id, tvConfig.name, tvConfig.host, {
+        cert: tvConfig.cert,
+        onCertificate: (cert) => {
+          updatePlatformConfig(this.api, PLATFORM_NAME, (platformConfig) => {
+            const tvs = platformConfig.androidTvs as Array<Record<string, unknown>> | undefined
+            if (tvs?.[index])
+              tvs[index].cert = cert
+          })
+        },
+      }, tvConfig.room)
+      this.devices.push(tv)
+      this.setupTvAccessory(tv)
+      if (!tvConfig.cert) {
+        this.log.warn(
+          `Android TV "${tvConfig.name}" has no saved pairing certificate yet — pair it once via the HomeHub dashboard (or POST /devices/${id}/pair then /devices/${id}/pair/code, see README).`,
+        )
+      }
+    })
+
     this.log.info(`HomeHub Bridge ready with ${this.devices.length} device(s)`)
   }
 
@@ -143,6 +173,85 @@ export class HomeHubBridgePlatform implements DynamicPlatformPlugin {
       .onGet(async () => fahrenheitToCelsius((await device.getStatus()).targetTemp))
       .onSet(async value => device.setTargetTemp(celsiusToFahrenheit(Number(value))))
   }
+
+  private setupSpeakerAccessory(device: SpeakerDevice): void {
+    const accessory = this.getOrCreateAccessory(device.id, device.name)
+    const service = accessory.getService(this.Service.SmartSpeaker) ?? accessory.addService(this.Service.SmartSpeaker)
+    service.setCharacteristic(this.Characteristic.Name, device.name)
+    service.getCharacteristic(this.Characteristic.CurrentMediaState)
+      .onGet(async () => toMediaState(this.Characteristic, (await device.getStatus()).playback))
+    service.getCharacteristic(this.Characteristic.TargetMediaState)
+      .onGet(async () => toMediaState(this.Characteristic, (await device.getStatus()).playback))
+      .onSet(async (value) => {
+        if (value === this.Characteristic.TargetMediaState.PLAY)
+          await device.setPlayback('playing')
+        else if (value === this.Characteristic.TargetMediaState.PAUSE)
+          await device.setPlayback('paused')
+      })
+    service.getCharacteristic(this.Characteristic.Mute)
+      .onGet(async () => (await device.getStatus()).muted)
+      .onSet(async value => device.setMuted(Boolean(value)))
+    service.getCharacteristic(this.Characteristic.Volume)
+      .onGet(async () => (await device.getStatus()).volume)
+      .onSet(async value => device.setVolume(Number(value)))
+  }
+
+  private setupTvAccessory(device: TvDevice): void {
+    const accessory = this.getOrCreateAccessory(device.id, device.name)
+    const service = accessory.getService(this.Service.Television) ?? accessory.addService(this.Service.Television)
+    service.setCharacteristic(this.Characteristic.Name, device.name)
+    service.setCharacteristic(this.Characteristic.ConfiguredName, device.name)
+    service.setCharacteristic(this.Characteristic.SleepDiscoveryMode, this.Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE)
+    service.getCharacteristic(this.Characteristic.Active)
+      .onGet(async () => ((await device.getStatus()).on ? this.Characteristic.Active.ACTIVE : this.Characteristic.Active.INACTIVE))
+      .onSet(async value => device.setOn(value === this.Characteristic.Active.ACTIVE))
+    // Single-input device — HomeKit still requires an Active Identifier.
+    service.setCharacteristic(this.Characteristic.ActiveIdentifier, 1)
+    service.getCharacteristic(this.Characteristic.RemoteKey)
+      .onSet(async (value) => {
+        const key = fromRemoteKey(this.Characteristic, Number(value))
+        if (key)
+          await device.sendRemoteKey(key)
+      })
+
+    const speakerService = accessory.getService(this.Service.TelevisionSpeaker) ?? accessory.addService(this.Service.TelevisionSpeaker)
+    speakerService.setCharacteristic(this.Characteristic.Name, `${device.name} Volume`)
+    speakerService.setCharacteristic(this.Characteristic.VolumeControlType, this.Characteristic.VolumeControlType.ABSOLUTE)
+    speakerService.getCharacteristic(this.Characteristic.Mute)
+      .onGet(async () => (await device.getStatus()).muted)
+      .onSet(async value => device.setMuted(Boolean(value)))
+    speakerService.getCharacteristic(this.Characteristic.Volume)
+      .onGet(async () => (await device.getStatus()).volume)
+      .onSet(async value => device.setVolume(Number(value)))
+    service.addLinkedService(speakerService)
+  }
+}
+
+function toMediaState(Characteristic: typeof import('homebridge').Characteristic, playback: PlaybackState): number {
+  if (playback === 'playing')
+    return Characteristic.CurrentMediaState.PLAY
+  if (playback === 'paused')
+    return Characteristic.CurrentMediaState.PAUSE
+  return Characteristic.CurrentMediaState.STOP
+}
+
+function fromRemoteKey(Characteristic: typeof import('homebridge').Characteristic, value: number): TvRemoteKey | null {
+  const map: Record<number, TvRemoteKey> = {
+    [Characteristic.RemoteKey.REWIND]: 'rewind',
+    [Characteristic.RemoteKey.FAST_FORWARD]: 'fast_forward',
+    [Characteristic.RemoteKey.NEXT_TRACK]: 'next_track',
+    [Characteristic.RemoteKey.PREVIOUS_TRACK]: 'previous_track',
+    [Characteristic.RemoteKey.ARROW_UP]: 'up',
+    [Characteristic.RemoteKey.ARROW_DOWN]: 'down',
+    [Characteristic.RemoteKey.ARROW_LEFT]: 'left',
+    [Characteristic.RemoteKey.ARROW_RIGHT]: 'right',
+    [Characteristic.RemoteKey.SELECT]: 'select',
+    [Characteristic.RemoteKey.BACK]: 'back',
+    [Characteristic.RemoteKey.EXIT]: 'exit',
+    [Characteristic.RemoteKey.PLAY_PAUSE]: 'play_pause',
+    [Characteristic.RemoteKey.INFORMATION]: 'information',
+  }
+  return map[value] ?? null
 }
 
 // HomeKit's Thermostat service always speaks Celsius over HAP regardless of

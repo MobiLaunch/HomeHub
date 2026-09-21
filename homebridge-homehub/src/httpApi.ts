@@ -45,6 +45,16 @@ function isAuthorized(req: IncomingMessage, token: string): boolean {
   return headerBuf.length === expectedBuf.length && timingSafeEqual(headerBuf, expectedBuf)
 }
 
+/** `createAndroidTv`'s return type, feature-detected at runtime — the `Device` union's `tv` member stays a plain `TvDevice` everywhere else so pairing stays an androidtv.ts concern. */
+interface PairingCapable {
+  pairingState: () => string
+  startPairing: () => Promise<void>
+  submitPairingCode: (code: string) => void
+}
+function asPairingCapable(device: Device): PairingCapable | null {
+  return device.kind === 'tv' && 'startPairing' in device ? (device as unknown as PairingCapable) : null
+}
+
 async function applyCommand(device: Device, body: Record<string, unknown>): Promise<void> {
   if (device.kind === 'light') {
     if (typeof body.on === 'boolean')
@@ -58,11 +68,30 @@ async function applyCommand(device: Device, body: Record<string, unknown>): Prom
       await device.setLocked(body.locked)
     return
   }
-  if (typeof body.targetTemp === 'number')
-    await device.setTargetTemp(body.targetTemp)
+  if (device.kind === 'climate') {
+    if (typeof body.targetTemp === 'number')
+      await device.setTargetTemp(body.targetTemp)
+    return
+  }
+  if (device.kind === 'speaker' || device.kind === 'tv') {
+    if (device.kind === 'tv' && typeof body.on === 'boolean')
+      await device.setOn(body.on)
+    if (body.playback === 'playing' || body.playback === 'paused')
+      await device.setPlayback(body.playback)
+    if (typeof body.volume === 'number')
+      await device.setVolume(body.volume)
+    if (typeof body.muted === 'boolean')
+      await device.setMuted(body.muted)
+    if (device.kind === 'tv' && typeof body.remoteKey === 'string')
+      await device.sendRemoteKey(body.remoteKey as Parameters<typeof device.sendRemoteKey>[0])
+  }
 }
 
 async function describeDevice(device: Device): Promise<Record<string, unknown>> {
+  const pairing = asPairingCapable(device)
+  if (pairing && pairing.pairingState() !== 'paired') {
+    return { id: device.id, kind: device.kind, name: device.name, room: device.room, pairingState: pairing.pairingState() }
+  }
   try {
     const status = await device.getStatus()
     return { id: device.id, kind: device.kind, name: device.name, room: device.room, ...status }
@@ -107,6 +136,39 @@ export function startHttpApi(log: Logging, config: HttpApiConfig, devices: Devic
           }
           const body = await readJsonBody(req)
           await applyCommand(device, body)
+          respondJson(res, 200, { ok: true })
+          return
+        }
+
+        // Android TV's one-time on-screen PIN pairing (see androidtv.ts) —
+        // no other device kind needs an interactive setup step like this.
+        const pairMatch = /^\/devices\/([^/]+)\/pair$/.exec(url.pathname)
+        if (req.method === 'POST' && pairMatch) {
+          const device = devices.find(d => d.id === pairMatch[1])
+          const pairing = device && asPairingCapable(device)
+          if (!device || !pairing) {
+            respondJson(res, 404, { error: 'device not found or not pairable' })
+            return
+          }
+          await pairing.startPairing()
+          respondJson(res, 200, { pairingState: pairing.pairingState() })
+          return
+        }
+
+        const pairCodeMatch = /^\/devices\/([^/]+)\/pair\/code$/.exec(url.pathname)
+        if (req.method === 'POST' && pairCodeMatch) {
+          const device = devices.find(d => d.id === pairCodeMatch[1])
+          const pairing = device && asPairingCapable(device)
+          if (!device || !pairing) {
+            respondJson(res, 404, { error: 'device not found or not pairable' })
+            return
+          }
+          const body = await readJsonBody(req)
+          if (typeof body.code !== 'string') {
+            respondJson(res, 400, { error: 'code is required' })
+            return
+          }
+          pairing.submitPairingCode(body.code)
           respondJson(res, 200, { ok: true })
           return
         }

@@ -2,7 +2,7 @@
   "pluginAlias": "HomeHubBridge",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Bridges Kasa/Tapo lights, an Ecobee thermostat, and August locks into HomeKit, and exposes them to the HomeHub dashboard over a local HTTP API.",
+  "headerDisplay": "Bridges Kasa/Tapo lights, an Ecobee thermostat, August locks, Google Cast speakers, and Android TV / Google TV devices into HomeKit, and exposes them to the HomeHub dashboard over a local HTTP API.",
   "schema": {
     "type": "object",
     "properties": {
@@ -79,6 +79,38 @@
           },
           "lockName": { "title": "Lock name shown in HomeKit", "type": "string", "default": "Front Door" },
           "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
+        }
+      },
+      "googleCastSpeakers": {
+        "title": "Google Home / Cast speakers",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "title": "Name", "type": "string", "required": true },
+            "host": { "title": "IP address", "type": "string", "required": true },
+            "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
+          }
+        }
+      },
+      "androidTvs": {
+        "title": "Android TV / Google TV",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": { "title": "Name", "type": "string", "required": true },
+            "host": { "title": "IP address", "type": "string", "required": true },
+            "cert": {
+              "title": "Pairing certificate (filled in automatically after the one-time on-screen PIN pairing — see README)",
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "cert": { "type": "string" }
+              }
+            },
+            "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
+          }
         }
       }
     }

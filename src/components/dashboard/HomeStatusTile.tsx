@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { mutate } from "swr";
 import { CircularDial } from "@/components/CircularDial";
 import { Icon } from "@/components/Icon";
@@ -22,6 +23,24 @@ async function sendCommand(deviceId: string, command: Record<string, unknown>) {
     body: JSON.stringify({ deviceId, command }),
   });
   if (!res.ok) throw new Error("Command failed");
+}
+
+async function pairDevice(deviceId: string) {
+  const res = await fetch(HOME_STATUS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId, pair: true }),
+  });
+  if (!res.ok) throw new Error("Pairing failed");
+}
+
+async function submitPairCode(deviceId: string, code: string) {
+  const res = await fetch(HOME_STATUS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId, pairCode: code }),
+  });
+  if (!res.ok) throw new Error("Incorrect code");
 }
 
 /** `expanded` is set inside the full-surface tile overlay — Home Status
@@ -77,7 +96,7 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
               </Section>
             );
           })
-        : (["climate", "lock", "light"] as const).map((kind) => {
+        : (["climate", "lock", "light", "speaker", "tv"] as const).map((kind) => {
             const kindDevices = devices.filter((d) => d.kind === kind);
             if (kindDevices.length === 0) return null;
             return (
@@ -92,8 +111,8 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
   );
 }
 
-const KIND_TITLE: Record<BridgeDevice["kind"], string> = { climate: "Climate", lock: "Locks", light: "Lights" };
-const KIND_ORDER: Record<BridgeDevice["kind"], number> = { climate: 0, lock: 1, light: 2 };
+const KIND_TITLE: Record<BridgeDevice["kind"], string> = { climate: "Climate", lock: "Locks", light: "Lights", speaker: "Speakers", tv: "TVs" };
+const KIND_ORDER: Record<BridgeDevice["kind"], number> = { climate: 0, lock: 1, light: 2, speaker: 3, tv: 4 };
 function byKindOrder(a: BridgeDevice, b: BridgeDevice) {
   return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
 }
@@ -109,7 +128,33 @@ function DeviceRowByKind({ device, large, onUpdate }: {
   if (device.kind === "lock") {
     return <LockRow device={device} large={large} onToggle={() => onUpdate(device.id, { locked: !device.locked }, { locked: !device.locked })} />;
   }
-  return <ClimateRow device={device} large={large} onChange={(targetTemp) => onUpdate(device.id, { targetTemp }, { targetTemp })} />;
+  if (device.kind === "climate") {
+    return <ClimateRow device={device} large={large} onChange={(targetTemp) => onUpdate(device.id, { targetTemp }, { targetTemp })} />;
+  }
+  if (device.kind === "speaker") {
+    return (
+      <SpeakerRow
+        device={device}
+        large={large}
+        onPlayback={(playback) => onUpdate(device.id, { playback }, { playback })}
+        onMute={(muted) => onUpdate(device.id, { muted }, { muted })}
+        onVolume={(volume) => onUpdate(device.id, { volume }, { volume })}
+      />
+    );
+  }
+  if (device.pairingState && device.pairingState !== "paired") {
+    return <TvPairingRow device={device} />;
+  }
+  return (
+    <TvRow
+      device={device}
+      large={large}
+      onToggle={(on) => onUpdate(device.id, { on }, { on })}
+      onPlayback={(playback) => onUpdate(device.id, { playback }, { playback })}
+      onMute={(muted) => onUpdate(device.id, { muted }, { muted })}
+      onVolume={(volume) => onUpdate(device.id, { volume }, { volume })}
+    />
+  );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -121,11 +166,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DeviceRow({ icon, iconColor, name, error, large, active, photoUrl, children }: {
+function DeviceRow({ icon, iconColor, name, error, subtitle, large, active, photoUrl, children }: {
   icon: string;
   iconColor: string;
   name: string;
   error?: string;
+  /** A secondary line shown when there's no error — e.g. what's currently playing. */
+  subtitle?: string;
   large?: boolean;
   /** Shows a soft concentric ring behind the icon — the kit's "this is live" cue, kept static rather than animated so a dashboard full of devices doesn't turn into a wall of pulsing rings. */
   active?: boolean;
@@ -150,6 +197,9 @@ function DeviceRow({ icon, iconColor, name, error, large, active, photoUrl, chil
           <p className="flex items-center gap-1 truncate text-[11px]" style={{ color: "var(--m3-error)" }}>
             <Icon name="error" className="h-3 w-3" /> Unreachable
           </p>
+        )}
+        {!error && subtitle && (
+          <p className="truncate text-[11px]" style={{ color: "var(--ink-soft)" }}>{subtitle}</p>
         )}
       </div>
       {children}
@@ -207,6 +257,192 @@ function ClimateRow({ device, large, onChange }: { device: BridgeDevice; large?:
           </span>
         </CircularDial>
       </div>
+    </DeviceRow>
+  );
+}
+
+function nowPlayingSubtitle(device: BridgeDevice): string | undefined {
+  if (device.nowPlaying) {
+    return device.nowPlaying.subtitle ? `${device.nowPlaying.title} — ${device.nowPlaying.subtitle}` : device.nowPlaying.title;
+  }
+  return device.playback === "idle" ? "Nothing playing" : undefined;
+}
+
+function PlayPauseButton({ playback, onToggle }: { playback?: BridgeDevice["playback"]; onToggle: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  const playing = playback === "playing";
+  return (
+    <button
+      onClick={onToggle}
+      onPointerDown={onPointerDown}
+      disabled={!playback || playback === "idle"}
+      className="ripple-surface relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full disabled:opacity-40"
+      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+      aria-label={playing ? `Pause` : `Play`}
+    >
+      {rippleLayer}
+      <Icon name={playing ? "pause" : "play_arrow"} className="h-4 w-4" filled />
+    </button>
+  );
+}
+
+function MuteButton({ muted, onToggle }: { muted?: boolean; onToggle: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  return (
+    <button
+      onClick={onToggle}
+      onPointerDown={onPointerDown}
+      className="ripple-surface relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+      style={{ background: "var(--surface-pill)", color: muted ? "var(--m3-error)" : "var(--ink-soft)" }}
+      aria-label={muted ? "Unmute" : "Mute"}
+    >
+      {rippleLayer}
+      <Icon name={muted ? "volume_off" : "volume_up"} className="h-4 w-4" />
+    </button>
+  );
+}
+
+function VolumeDial({ device, large, onVolume }: { device: BridgeDevice; large?: boolean; onVolume: (volume: number) => void }) {
+  const dialSize = large ? 116 : 76;
+  return (
+    <CircularDial value={device.volume ?? 0} min={0} max={100} step={5} onChange={onVolume} size={dialSize} label={`${device.name} volume`}>
+      <span className={`font-semibold tabular-nums ${large ? "text-xl" : "text-sm"}`} style={{ color: "var(--ink)" }}>
+        {Math.round(device.volume ?? 0)}
+      </span>
+    </CircularDial>
+  );
+}
+
+function SpeakerRow({ device, large, onPlayback, onMute, onVolume }: {
+  device: BridgeDevice;
+  large?: boolean;
+  onPlayback: (playback: "playing" | "paused") => void;
+  onMute: (muted: boolean) => void;
+  onVolume: (volume: number) => void;
+}) {
+  return (
+    <DeviceRow
+      icon="speaker"
+      iconColor="var(--accent)"
+      name={device.name}
+      error={device.error}
+      subtitle={nowPlayingSubtitle(device)}
+      large={large}
+      active={device.playback === "playing"}
+      photoUrl={device.nowPlaying?.imageUrl}
+    >
+      <div className="flex shrink-0 items-center gap-1.5">
+        <PlayPauseButton playback={device.playback} onToggle={() => onPlayback(device.playback === "playing" ? "paused" : "playing")} />
+        <MuteButton muted={device.muted} onToggle={() => onMute(!device.muted)} />
+        <VolumeDial device={device} large={large} onVolume={onVolume} />
+      </div>
+    </DeviceRow>
+  );
+}
+
+function TvRow({ device, large, onToggle, onPlayback, onMute, onVolume }: {
+  device: BridgeDevice;
+  large?: boolean;
+  onToggle: (on: boolean) => void;
+  onPlayback: (playback: "playing" | "paused") => void;
+  onMute: (muted: boolean) => void;
+  onVolume: (volume: number) => void;
+}) {
+  return (
+    <DeviceRow
+      icon="tv"
+      iconColor="var(--accent)"
+      name={device.name}
+      error={device.error}
+      subtitle={device.on ? nowPlayingSubtitle(device) : "Off"}
+      large={large}
+      active={Boolean(device.on)}
+      photoUrl={device.nowPlaying?.imageUrl}
+    >
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Switch checked={Boolean(device.on)} onChange={onToggle} label={`${device.name} power`} />
+        {device.on && (
+          <>
+            <PlayPauseButton playback={device.playback} onToggle={() => onPlayback(device.playback === "playing" ? "paused" : "playing")} />
+            <MuteButton muted={device.muted} onToggle={() => onMute(!device.muted)} />
+            <VolumeDial device={device} large={large} onVolume={onVolume} />
+          </>
+        )}
+      </div>
+    </DeviceRow>
+  );
+}
+
+/** A not-yet-paired Android TV shows a "Pair" affordance instead of controls — see androidtv.ts's PIN pairing flow. */
+function TvPairingRow({ device }: { device: BridgeDevice }) {
+  const [code, setCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const showSnackbar = useSnackbar();
+  const awaitingCode = device.pairingState === "awaiting_code";
+
+  async function handlePair() {
+    setSubmitting(true);
+    try {
+      await pairDevice(device.id);
+      mutate(HOME_STATUS_URL);
+    }
+    catch {
+      showSnackbar("Couldn't start pairing — check the bridge is still running");
+    }
+    finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSubmitCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setSubmitting(true);
+    try {
+      await submitPairCode(device.id, code.trim());
+      setCode("");
+      mutate(HOME_STATUS_URL);
+    }
+    catch {
+      showSnackbar("That code didn't work — check the PIN on the TV and try again");
+    }
+    finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <DeviceRow icon="tv" iconColor="var(--ink-soft)" name={device.name} subtitle={awaitingCode ? "Enter the PIN shown on the TV" : "Needs pairing"}>
+      {awaitingCode ? (
+        <form onSubmit={handleSubmitCode} className="flex shrink-0 items-center gap-1.5">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="PIN"
+            inputMode="numeric"
+            className="w-16 rounded-full px-3 py-1.5 text-xs font-semibold outline-none"
+            style={{ background: "var(--surface-pill)", color: "var(--ink)" }}
+            aria-label={`${device.name} pairing PIN`}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-full px-3.5 py-1.5 text-xs font-semibold disabled:opacity-50"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+          >
+            Submit
+          </button>
+        </form>
+      ) : (
+        <button
+          onClick={handlePair}
+          disabled={submitting}
+          className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold disabled:opacity-50"
+          style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+        >
+          Pair
+        </button>
+      )}
     </DeviceRow>
   );
 }
