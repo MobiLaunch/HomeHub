@@ -19,6 +19,7 @@ export interface LightDevice {
   kind: 'light'
   id: string
   name: string
+  room?: string
   getStatus: () => Promise<LightStatus>
   setOn: (on: boolean) => Promise<void>
   setBrightness: (brightness: number) => Promise<void>
@@ -28,6 +29,7 @@ export interface LockDevice {
   kind: 'lock'
   id: string
   name: string
+  room?: string
   getStatus: () => Promise<LockStatus>
   setLocked: (locked: boolean) => Promise<void>
 }
@@ -36,6 +38,7 @@ export interface ClimateDevice {
   kind: 'climate'
   id: string
   name: string
+  room?: string
   getStatus: () => Promise<ClimateStatus>
   setTargetTemp: (fahrenheit: number) => Promise<void>
 }

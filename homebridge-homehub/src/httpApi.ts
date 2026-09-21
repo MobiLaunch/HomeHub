@@ -65,10 +65,10 @@ async function applyCommand(device: Device, body: Record<string, unknown>): Prom
 async function describeDevice(device: Device): Promise<Record<string, unknown>> {
   try {
     const status = await device.getStatus()
-    return { id: device.id, kind: device.kind, name: device.name, ...status }
+    return { id: device.id, kind: device.kind, name: device.name, room: device.room, ...status }
   }
   catch (error) {
-    return { id: device.id, kind: device.kind, name: device.name, error: error instanceof Error ? error.message : String(error) }
+    return { id: device.id, kind: device.kind, name: device.name, room: device.room, error: error instanceof Error ? error.message : String(error) }
   }
 }
 

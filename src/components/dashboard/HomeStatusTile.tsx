@@ -1,7 +1,9 @@
 "use client";
 
 import { mutate } from "swr";
+import { CircularDial } from "@/components/CircularDial";
 import { Icon } from "@/components/Icon";
+import { PhotoIconTile } from "@/components/PhotoIconTile";
 import { Switch } from "@/components/Switch";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
@@ -10,7 +12,8 @@ import { useRipple } from "@/hooks/useRipple";
 import type { BridgeDevice } from "@/app/api/live/home-status/route";
 
 const HOME_STATUS_URL = "/api/live/home-status";
-const TEMP_STEP = 1;
+const CLIMATE_MIN = 60;
+const CLIMATE_MAX = 85;
 
 async function sendCommand(deviceId: string, command: Record<string, unknown>) {
   const res = await fetch(HOME_STATUS_URL, {
@@ -54,50 +57,59 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
     return <EmptyState text="Connect Home Status in Settings to control lights, locks, and climate." />;
   }
 
-  const climate = devices.filter((d): d is BridgeDevice & { kind: "climate" } => d.kind === "climate");
-  const locks = devices.filter((d): d is BridgeDevice & { kind: "lock" } => d.kind === "lock");
-  const lights = devices.filter((d): d is BridgeDevice & { kind: "light" } => d.kind === "light");
+  // Rooms are optional (set per-device in the plugin's config.json). Only
+  // switch to room-grouped sections once at least one device actually has
+  // one set — otherwise every existing setup keeps today's Climate/Locks/
+  // Lights grouping with zero behavior change.
+  const roomsInUse = Array.from(new Set(devices.map((d) => d.room).filter((r): r is string => Boolean(r))));
 
   return (
     <div className={`flex flex-col gap-4 ${expanded ? "gap-5" : ""}`}>
-      {climate.length > 0 && (
-        <Section title="Climate">
-          {climate.map((device) => (
-            <ClimateRow
-              key={device.id}
-              device={device}
-              large={expanded}
-              onChange={(targetTemp) => optimisticUpdate(device.id, { targetTemp }, { targetTemp })}
-            />
-          ))}
-        </Section>
-      )}
-      {locks.length > 0 && (
-        <Section title="Locks">
-          {locks.map((device) => (
-            <LockRow
-              key={device.id}
-              device={device}
-              large={expanded}
-              onToggle={() => optimisticUpdate(device.id, { locked: !device.locked }, { locked: !device.locked })}
-            />
-          ))}
-        </Section>
-      )}
-      {lights.length > 0 && (
-        <Section title="Lights">
-          {lights.map((device) => (
-            <LightRow
-              key={device.id}
-              device={device}
-              large={expanded}
-              onToggle={(on) => optimisticUpdate(device.id, { on }, { on })}
-            />
-          ))}
-        </Section>
-      )}
+      {roomsInUse.length > 0
+        ? [...roomsInUse, "Other"].map((room) => {
+            const roomDevices = devices.filter((d) => (d.room ?? "Other") === room).sort(byKindOrder);
+            if (roomDevices.length === 0) return null;
+            return (
+              <Section key={room} title={room}>
+                {roomDevices.map((device) => (
+                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} />
+                ))}
+              </Section>
+            );
+          })
+        : (["climate", "lock", "light"] as const).map((kind) => {
+            const kindDevices = devices.filter((d) => d.kind === kind);
+            if (kindDevices.length === 0) return null;
+            return (
+              <Section key={kind} title={KIND_TITLE[kind]}>
+                {kindDevices.map((device) => (
+                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} />
+                ))}
+              </Section>
+            );
+          })}
     </div>
   );
+}
+
+const KIND_TITLE: Record<BridgeDevice["kind"], string> = { climate: "Climate", lock: "Locks", light: "Lights" };
+const KIND_ORDER: Record<BridgeDevice["kind"], number> = { climate: 0, lock: 1, light: 2 };
+function byKindOrder(a: BridgeDevice, b: BridgeDevice) {
+  return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
+}
+
+function DeviceRowByKind({ device, large, onUpdate }: {
+  device: BridgeDevice;
+  large?: boolean;
+  onUpdate: (deviceId: string, patch: Partial<BridgeDevice>, command: Record<string, unknown>) => void;
+}) {
+  if (device.kind === "light") {
+    return <LightRow device={device} large={large} onToggle={(on) => onUpdate(device.id, { on }, { on })} />;
+  }
+  if (device.kind === "lock") {
+    return <LockRow device={device} large={large} onToggle={() => onUpdate(device.id, { locked: !device.locked }, { locked: !device.locked })} />;
+  }
+  return <ClimateRow device={device} large={large} onChange={(targetTemp) => onUpdate(device.id, { targetTemp }, { targetTemp })} />;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -109,18 +121,28 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DeviceRow({ icon, iconColor, name, error, large, children }: {
+function DeviceRow({ icon, iconColor, name, error, large, active, photoUrl, children }: {
   icon: string;
   iconColor: string;
   name: string;
   error?: string;
   large?: boolean;
+  /** Shows a soft concentric ring behind the icon — the kit's "this is live" cue, kept static rather than animated so a dashboard full of devices doesn't turn into a wall of pulsing rings. */
+  active?: boolean;
+  photoUrl?: string;
   children: React.ReactNode;
 }) {
+  const iconSize = large ? 44 : 36;
   return (
     <div className={`flex items-center gap-3 rounded-2xl px-3.5 ${large ? "py-3.5" : "py-2.5"}`} style={{ background: "var(--glass-fill-strong)" }}>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--accent-soft)" }}>
-        <Icon name={icon} className="h-4.5 w-4.5" style={{ color: iconColor }} />
+      <div className="relative shrink-0">
+        {active && (
+          <>
+            <span className="pointer-events-none absolute rounded-full" style={{ inset: -5, border: "1px solid var(--accent-soft)" }} />
+            <span className="pointer-events-none absolute rounded-full" style={{ inset: -10, border: "1px solid var(--accent-soft)", opacity: 0.5 }} />
+          </>
+        )}
+        <PhotoIconTile icon={icon} iconColor={iconColor} size={iconSize} photoUrl={photoUrl} alt={name} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{name}</p>
@@ -137,7 +159,7 @@ function DeviceRow({ icon, iconColor, name, error, large, children }: {
 
 function LightRow({ device, large, onToggle }: { device: BridgeDevice; large?: boolean; onToggle: (on: boolean) => void }) {
   return (
-    <DeviceRow icon="lightbulb" iconColor="var(--accent)" name={device.name} error={device.error} large={large}>
+    <DeviceRow icon="lightbulb" iconColor="var(--accent)" name={device.name} error={device.error} large={large} active={Boolean(device.on)}>
       <Switch checked={Boolean(device.on)} onChange={onToggle} label={`${device.name} power`} />
     </DeviceRow>
   );
@@ -163,23 +185,27 @@ function LockRow({ device, large, onToggle }: { device: BridgeDevice; large?: bo
 }
 
 function ClimateRow({ device, large, onChange }: { device: BridgeDevice; large?: boolean; onChange: (targetTemp: number) => void }) {
-  const { onPointerDown: downDown, rippleLayer: downRipple } = useRipple<HTMLButtonElement>();
-  const { onPointerDown: upDown, rippleLayer: upRipple } = useRipple<HTMLButtonElement>();
   const target = device.targetTemp ?? device.currentTemp ?? 70;
+  const dialSize = large ? 116 : 76;
 
   return (
     <DeviceRow icon="thermostat" iconColor="var(--accent)" name={device.name} error={device.error} large={large}>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
         {typeof device.currentTemp === "number" && (
-          <span className="mr-2 shrink-0 text-xs" style={{ color: "var(--ink-soft)" }}>{Math.round(device.currentTemp)}°now</span>
+          <span className="shrink-0 text-xs" style={{ color: "var(--ink-soft)" }}>{Math.round(device.currentTemp)}° now</span>
         )}
-        <button onClick={() => onChange(target - TEMP_STEP)} onPointerDown={downDown} className="ripple-surface relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full" style={{ background: "var(--surface-pill)" }} aria-label={`Lower ${device.name} target temperature`}>
-          {downRipple}<Icon name="remove" className="h-4 w-4" style={{ color: "var(--ink)" }} />
-        </button>
-        <span className={`shrink-0 text-center font-semibold tabular-nums ${large ? "w-14 text-lg" : "w-11 text-sm"}`} style={{ color: "var(--ink)" }}>{Math.round(target)}°</span>
-        <button onClick={() => onChange(target + TEMP_STEP)} onPointerDown={upDown} className="ripple-surface relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full" style={{ background: "var(--surface-pill)" }} aria-label={`Raise ${device.name} target temperature`}>
-          {upRipple}<Icon name="add" className="h-4 w-4" style={{ color: "var(--ink)" }} />
-        </button>
+        <CircularDial
+          value={target}
+          min={CLIMATE_MIN}
+          max={CLIMATE_MAX}
+          onChange={onChange}
+          size={dialSize}
+          label={`${device.name} target temperature`}
+        >
+          <span className={`font-semibold tabular-nums ${large ? "text-xl" : "text-sm"}`} style={{ color: "var(--ink)" }}>
+            {Math.round(target)}°
+          </span>
+        </CircularDial>
       </div>
     </DeviceRow>
   );

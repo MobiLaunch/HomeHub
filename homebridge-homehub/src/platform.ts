@@ -61,8 +61,8 @@ export class HomeHubBridgePlatform implements DynamicPlatformPlugin {
       const id = `kasa-${kasaConfig.host}`
       const device
         = kasaConfig.protocol === 'tapo'
-          ? createTapoLight(id, kasaConfig.name, kasaConfig.host, kasaConfig.tapoUsername ?? '', kasaConfig.tapoPassword ?? '')
-          : createKasaLight(id, kasaConfig.name, kasaConfig.host)
+          ? createTapoLight(id, kasaConfig.name, kasaConfig.host, kasaConfig.tapoUsername ?? '', kasaConfig.tapoPassword ?? '', kasaConfig.room)
+          : createKasaLight(id, kasaConfig.name, kasaConfig.host, { room: kasaConfig.room })
       this.devices.push(device)
       this.setupLightAccessory(device)
     }
@@ -72,7 +72,7 @@ export class HomeHubBridgePlatform implements DynamicPlatformPlugin {
         updatePlatformConfig(this.api, PLATFORM_NAME, (platformConfig) => {
           (platformConfig.ecobee as Record<string, unknown>).refreshToken = refreshToken
         })
-      })
+      }, config.ecobee.room)
       this.devices.push(thermostat)
       this.setupClimateAccessory(thermostat)
     }
@@ -92,7 +92,7 @@ export class HomeHubBridgePlatform implements DynamicPlatformPlugin {
       // so a single lock's id must be supplied once it's known; until then
       // we can't register a HomeKit accessory for it yet.
       if (config.august.lockId) {
-        const lock = createAugustLock(config.august.lockId, config.august.lockName ?? 'Front Door', installId, config.august.email, config.august.password)
+        const lock = createAugustLock(config.august.lockId, config.august.lockName ?? 'Front Door', installId, config.august.email, config.august.password, config.august.room)
         this.devices.push(lock)
         this.setupLockAccessory(lock)
       }

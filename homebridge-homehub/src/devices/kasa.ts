@@ -84,11 +84,13 @@ async function getSysinfo(host: string, port: number): Promise<KasaSysinfo> {
 }
 
 /** `port` defaults to Kasa's fixed 9999 — only ever overridden in tests, against a fake local server. */
-export function createKasaLight(id: string, name: string, host: string, port = KASA_PORT): LightDevice {
+export function createKasaLight(id: string, name: string, host: string, options: { port?: number, room?: string } = {}): LightDevice {
+  const port = options.port ?? KASA_PORT
   return {
     kind: 'light',
     id,
     name,
+    room: options.room,
     async getStatus(): Promise<LightStatus> {
       const sysinfo = await getSysinfo(host, port)
       if (sysinfo.light_state) {

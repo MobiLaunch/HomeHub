@@ -46,7 +46,8 @@
               ]
             },
             "tapoUsername": { "title": "Tapo account email (Tapo only)", "type": "string" },
-            "tapoPassword": { "title": "Tapo account password (Tapo only)", "type": "string" }
+            "tapoPassword": { "title": "Tapo account password (Tapo only)", "type": "string" },
+            "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
           }
         }
       },
@@ -58,7 +59,8 @@
           "refreshToken": {
             "title": "Refresh token (filled in automatically after the one-time PIN authorization — see README)",
             "type": "string"
-          }
+          },
+          "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
         }
       },
       "august": {
@@ -75,7 +77,8 @@
             "title": "Lock ID (fill in after running listAugustLocks once verified — see README)",
             "type": "string"
           },
-          "lockName": { "title": "Lock name shown in HomeKit", "type": "string", "default": "Front Door" }
+          "lockName": { "title": "Lock name shown in HomeKit", "type": "string", "default": "Front Door" },
+          "room": { "title": "Room (optional — groups devices on the HomeHub dashboard)", "type": "string" }
         }
       }
     }

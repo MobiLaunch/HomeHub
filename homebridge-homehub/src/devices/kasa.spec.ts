@@ -77,12 +77,12 @@ describe('createKasaLight', () => {
   })
 
   it('reads plug on/off state via get_sysinfo', async () => {
-    const light = createKasaLight('kasa-1', 'Fake Plug', host, port)
+    const light = createKasaLight('kasa-1', 'Fake Plug', host, { port })
     await expect(light.getStatus()).resolves.toEqual({ on: false, brightness: 0 })
   })
 
   it('turns a plug on via set_relay_state and reflects it in status', async () => {
-    const light = createKasaLight('kasa-1', 'Fake Plug', host, port)
+    const light = createKasaLight('kasa-1', 'Fake Plug', host, { port })
     await light.setOn(true)
     await expect(light.getStatus()).resolves.toEqual({ on: true, brightness: 100 })
   })

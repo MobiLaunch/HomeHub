@@ -6,6 +6,7 @@ export type BridgeDevice = {
   id: string;
   kind: "light" | "lock" | "climate";
   name: string;
+  room?: string;
   on?: boolean;
   brightness?: number;
   locked?: boolean;

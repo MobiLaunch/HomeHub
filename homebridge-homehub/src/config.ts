@@ -6,11 +6,13 @@ export interface KasaDeviceConfig {
   protocol?: 'kasa' | 'tapo'
   tapoUsername?: string
   tapoPassword?: string
+  room?: string
 }
 
 export interface EcobeeConfig {
   apiKey?: string
   refreshToken?: string
+  room?: string
 }
 
 export interface AugustConfig {
@@ -19,6 +21,7 @@ export interface AugustConfig {
   installId?: string
   lockId?: string
   lockName?: string
+  room?: string
 }
 
 export interface HttpApiConfig {

@@ -82,6 +82,7 @@ export function createEcobeeThermostat(
   apiKey: string,
   initialRefreshToken: string,
   onTokenRefreshed: (refreshToken: string) => void,
+  room?: string,
 ): ClimateDevice & { identifier: () => Promise<string> } {
   let accessToken: string | null = null
   let refreshToken = initialRefreshToken
@@ -126,6 +127,7 @@ export function createEcobeeThermostat(
     kind: 'climate',
     id: 'ecobee',
     name: 'Ecobee',
+    room,
     async identifier() {
       if (cachedIdentifier)
         return cachedIdentifier

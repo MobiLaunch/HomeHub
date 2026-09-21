@@ -115,11 +115,12 @@ async function setDeviceInfo(host: string, username: string, password: string, p
   await securePassthrough(host, session, { method: 'set_device_info', params })
 }
 
-export function createTapoLight(id: string, name: string, host: string, username: string, password: string): LightDevice {
+export function createTapoLight(id: string, name: string, host: string, username: string, password: string, room?: string): LightDevice {
   return {
     kind: 'light',
     id,
     name,
+    room,
     async getStatus(): Promise<LightStatus> {
       const info = await getDeviceInfo(host, username, password)
       return { on: Boolean(info.device_on), brightness: typeof info.brightness === 'number' ? info.brightness : 100 }

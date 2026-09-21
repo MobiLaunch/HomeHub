@@ -86,6 +86,7 @@ export function createAugustLock(
   installId: string,
   email: string,
   password: string,
+  room?: string,
 ): LockDevice {
   let accessToken: string | null = null
 
@@ -106,6 +107,7 @@ export function createAugustLock(
     kind: 'lock',
     id,
     name,
+    room,
     async getStatus(): Promise<LockStatus> {
       const token = await ensureSession()
       const res = await authedFetch(installId, token, `/locks/${id}/status`)

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mutate } from "swr";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
+import { SegmentedPillGroup } from "@/components/SegmentedPillGroup";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
 import { useSnackbar } from "@/hooks/useSnackbar";
@@ -76,7 +77,7 @@ export function CalendarTile({ expanded = false }: { expanded?: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <ViewSwitcher value={view} onChange={setView} />
+        <SegmentedPillGroup options={VIEWS} value={view} onChange={setView} />
         <div className="ml-auto flex items-center gap-1.5">
           {view !== "agenda" && (
             <>
@@ -133,15 +134,6 @@ function NextUp({ event, onSelect, large = false }: { event: CalendarEvent; onSe
       <Icon name="chevron_right" className={large ? "h-6 w-6 shrink-0" : "h-5 w-5 shrink-0"} style={{ color: "var(--ink-soft)" }} />
     </button>
   );
-}
-
-function ViewSwitcher({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
-  return <div className="glass-pill relative inline-flex max-w-full overflow-x-auto p-1">{VIEWS.map((v) => <ViewSegment key={v.value} active={value === v.value} label={v.label} onSelect={() => onChange(v.value)} />)}</div>;
-}
-
-function ViewSegment({ active, label, onSelect }: { active: boolean; label: string; onSelect: () => void }) {
-  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
-  return <button onClick={onSelect} onPointerDown={onPointerDown} className="ripple-surface relative min-h-8 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium" style={{ color: active ? "var(--on-accent)" : "var(--ink-soft)" }}>{active && <motion.span layoutId="calendar-view-active" transition={{ type: "spring", stiffness: 500, damping: 32 }} className="absolute inset-0 rounded-full" style={{ background: "var(--accent)" }} />}{rippleLayer}<span className="relative">{label}</span></button>;
 }
 
 function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
