@@ -32,6 +32,11 @@ instance, not as part of the Next.js app.
   newer/less battle-tested implementation than the others here. Real
   remote-control-style commands only; media state comes from Cast instead
   (see above), since this protocol only reports a foreground app name.
+  App shortcuts (`launchApp`) go through the same protocol via a deep
+  link — works when the app is installed and has registered that link,
+  which is true of the major streaming apps on stock Google TV (e.g. a
+  Walmart onn. streaming device), but a heavily customized manufacturer
+  build could behave differently. Not yet verified against real hardware.
 
 ## Install
 
@@ -138,7 +143,7 @@ into HomeHub's Settings) and optionally `httpApi.port` (default `8582`).
   - lock: `{"locked": true}`
   - climate: `{"targetTemp": 72}`
   - speaker: `{"playback": "playing" | "paused"}`, `{"volume": 50}`, `{"muted": true}`
-  - tv: all of the speaker commands, plus `{"on": true}` and `{"remoteKey": "up" | "down" | "left" | "right" | "select" | "back" | "exit" | "play_pause" | "rewind" | "fast_forward" | "next_track" | "previous_track" | "information"}`
+  - tv: all of the speaker commands, plus `{"on": true}`, `{"remoteKey": "up" | "down" | "left" | "right" | "select" | "back" | "exit" | "play_pause" | "rewind" | "fast_forward" | "next_track" | "previous_track" | "information"}`, and `{"launchApp": "netflix" | "youtube" | "disney_plus" | "hulu" | "prime_video" | "max" | "apple_tv" | "spotify"}`
 - `POST /devices/:id/pair` / `POST /devices/:id/pair/code` — Android TV's one-time PIN pairing (see above). No other device kind has these routes.
 
 All require `Authorization: Bearer <httpApi.token>`. This is meant to sit

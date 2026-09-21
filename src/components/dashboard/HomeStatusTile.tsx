@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { mutate } from "swr";
 import { CircularDial } from "@/components/CircularDial";
 import { Icon } from "@/components/Icon";
 import { PhotoIconTile } from "@/components/PhotoIconTile";
 import { Switch } from "@/components/Switch";
+import { TvRemote } from "@/components/dashboard/TvRemote";
 import { useLive } from "@/hooks/useLive";
 import { useReportActivity } from "@/hooks/useTileActivity";
 import { useSnackbar } from "@/hooks/useSnackbar";
@@ -49,6 +51,8 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
   const { data, isLoading } = useLive<{ devices: BridgeDevice[] }>(HOME_STATUS_URL, 15_000);
   const devices = data?.devices ?? [];
   const showSnackbar = useSnackbar();
+  const [remoteDeviceId, setRemoteDeviceId] = useState<string | null>(null);
+  const remoteDevice = devices.find((d) => d.id === remoteDeviceId);
 
   const unlockedCount = devices.filter((d) => d.kind === "lock" && d.locked === false).length;
   useReportActivity("home_status", unlockedCount > 0 ? 90 : 0, unlockedCount > 0);
@@ -91,7 +95,7 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
             return (
               <Section key={room} title={room}>
                 {roomDevices.map((device) => (
-                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} />
+                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} onOpenRemote={setRemoteDeviceId} />
                 ))}
               </Section>
             );
@@ -102,11 +106,14 @@ export function HomeStatusTile({ expanded = false }: { expanded?: boolean }) {
             return (
               <Section key={kind} title={KIND_TITLE[kind]}>
                 {kindDevices.map((device) => (
-                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} />
+                  <DeviceRowByKind key={device.id} device={device} large={expanded} onUpdate={optimisticUpdate} onOpenRemote={setRemoteDeviceId} />
                 ))}
               </Section>
             );
           })}
+      <AnimatePresence>
+        {remoteDevice && <TvRemote key={remoteDevice.id} device={remoteDevice} onClose={() => setRemoteDeviceId(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -117,10 +124,11 @@ function byKindOrder(a: BridgeDevice, b: BridgeDevice) {
   return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
 }
 
-function DeviceRowByKind({ device, large, onUpdate }: {
+function DeviceRowByKind({ device, large, onUpdate, onOpenRemote }: {
   device: BridgeDevice;
   large?: boolean;
   onUpdate: (deviceId: string, patch: Partial<BridgeDevice>, command: Record<string, unknown>) => void;
+  onOpenRemote: (deviceId: string) => void;
 }) {
   if (device.kind === "light") {
     return <LightRow device={device} large={large} onToggle={(on) => onUpdate(device.id, { on }, { on })} />;
@@ -153,6 +161,7 @@ function DeviceRowByKind({ device, large, onUpdate }: {
       onPlayback={(playback) => onUpdate(device.id, { playback }, { playback })}
       onMute={(muted) => onUpdate(device.id, { muted }, { muted })}
       onVolume={(volume) => onUpdate(device.id, { volume }, { volume })}
+      onOpenRemote={() => onOpenRemote(device.id)}
     />
   );
 }
@@ -340,13 +349,30 @@ function SpeakerRow({ device, large, onPlayback, onMute, onVolume }: {
   );
 }
 
-function TvRow({ device, large, onToggle, onPlayback, onMute, onVolume }: {
+function RemoteButton({ onOpen }: { onOpen: () => void }) {
+  const { onPointerDown, rippleLayer } = useRipple<HTMLButtonElement>();
+  return (
+    <button
+      onClick={onOpen}
+      onPointerDown={onPointerDown}
+      className="ripple-surface relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full"
+      style={{ background: "var(--surface-pill)", color: "var(--ink-soft)" }}
+      aria-label="Open remote"
+    >
+      {rippleLayer}
+      <Icon name="settings_remote" className="h-4 w-4" />
+    </button>
+  );
+}
+
+function TvRow({ device, large, onToggle, onPlayback, onMute, onVolume, onOpenRemote }: {
   device: BridgeDevice;
   large?: boolean;
   onToggle: (on: boolean) => void;
   onPlayback: (playback: "playing" | "paused") => void;
   onMute: (muted: boolean) => void;
   onVolume: (volume: number) => void;
+  onOpenRemote: () => void;
 }) {
   return (
     <DeviceRow
@@ -368,6 +394,7 @@ function TvRow({ device, large, onToggle, onPlayback, onMute, onVolume }: {
             <VolumeDial device={device} large={large} onVolume={onVolume} />
           </>
         )}
+        <RemoteButton onOpen={onOpenRemote} />
       </div>
     </DeviceRow>
   );

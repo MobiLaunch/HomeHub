@@ -84,6 +84,8 @@ async function applyCommand(device: Device, body: Record<string, unknown>): Prom
       await device.setMuted(body.muted)
     if (device.kind === 'tv' && typeof body.remoteKey === 'string')
       await device.sendRemoteKey(body.remoteKey as Parameters<typeof device.sendRemoteKey>[0])
+    if (device.kind === 'tv' && typeof body.launchApp === 'string')
+      await device.launchApp(body.launchApp as Parameters<typeof device.launchApp>[0])
   }
 }
 

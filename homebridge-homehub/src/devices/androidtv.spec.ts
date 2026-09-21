@@ -8,6 +8,7 @@ class FakeAndroidRemote extends EventEmitter implements AndroidRemote {
   started = false
   poweredState = false
   sentKeys: number[] = []
+  sentAppLinks: string[] = []
   cert: Certificate = { key: 'fake-key', cert: 'fake-cert' }
 
   constructor(public host: string, public options: AndroidRemoteOptions = {}) {
@@ -39,7 +40,10 @@ class FakeAndroidRemote extends EventEmitter implements AndroidRemote {
     this.sentKeys.push(keyCode)
   }
 
-  sendAppLink(_link: string): void {}
+  sendAppLink(link: string): void {
+    this.sentAppLinks.push(link)
+  }
+
   sendText(_text: string): void {}
   getCertificate(): Certificate {
     return this.cert
@@ -154,5 +158,13 @@ describe('createAndroidTv', () => {
     const tv = createAndroidTv('tv-1', 'Living Room TV', '192.168.1.20', { cert: { key: 'k', cert: 'c' }, remoteFactory, castClientFactory })
 
     await expect(tv.getStatus()).resolves.toMatchObject({ on: false, volume: 30, playback: 'idle' })
+  })
+
+  it('launches a streaming app via its registered deep link', async () => {
+    const { remoteFactory, castClientFactory, getLastRemote } = factories()
+    const tv = createAndroidTv('tv-1', 'Living Room TV', '192.168.1.20', { cert: { key: 'k', cert: 'c' }, remoteFactory, castClientFactory })
+
+    await tv.launchApp('netflix')
+    expect(getLastRemote().sentAppLinks).toEqual(['https://www.netflix.com'])
   })
 })

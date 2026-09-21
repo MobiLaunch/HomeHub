@@ -79,6 +79,14 @@ export type TvRemoteKey =
   | 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'exit'
   | 'play_pause' | 'information'
 
+// A curated set of major streaming apps launched via their registered
+// Android App Link domain — see androidtv.ts for the confidence caveat
+// (this depends on each app having registered that link, not this
+// protocol itself).
+export type StreamingApp =
+  | 'netflix' | 'youtube' | 'disney_plus' | 'hulu'
+  | 'prime_video' | 'max' | 'apple_tv' | 'spotify'
+
 export interface TvDevice {
   kind: 'tv'
   id: string
@@ -90,6 +98,7 @@ export interface TvDevice {
   setVolume: (volume: number) => Promise<void>
   setMuted: (muted: boolean) => Promise<void>
   sendRemoteKey: (key: TvRemoteKey) => Promise<void>
+  launchApp: (app: StreamingApp) => Promise<void>
 }
 
 export type Device = LightDevice | LockDevice | ClimateDevice | SpeakerDevice | TvDevice

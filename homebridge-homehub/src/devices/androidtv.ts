@@ -1,6 +1,6 @@
 import type { AndroidRemote, AndroidRemoteOptions, Certificate } from '@kud/androidtv-remote'
 import type { CastClientFactory } from './googlecast.js'
-import type { TvDevice, TvRemoteKey, TvStatus } from './types.js'
+import type { StreamingApp, TvDevice, TvRemoteKey, TvStatus } from './types.js'
 import { createAndroidRemote, RemoteKeyCode } from '@kud/androidtv-remote'
 import { createCastMediaController } from './googlecast.js'
 
@@ -39,6 +39,23 @@ const KEY_MAP: Partial<Record<TvRemoteKey, number>> = {
   exit: RemoteKeyCode.KEYCODE_HOME,
   play_pause: RemoteKeyCode.KEYCODE_MEDIA_PLAY_PAUSE,
   information: RemoteKeyCode.KEYCODE_INFO,
+}
+
+// `sendAppLink` hands a URI to the TV for Android's normal intent
+// resolution — these are each app's registered Android App Link domain,
+// the same links Home Assistant's androidtv_remote integration uses for
+// its source list. Works when the app is installed and has registered
+// that link (true of all of these on stock Google TV); a heavily
+// customized manufacturer build could behave differently.
+const APP_LINKS: Record<StreamingApp, string> = {
+  netflix: 'https://www.netflix.com',
+  youtube: 'https://www.youtube.com',
+  disney_plus: 'https://www.disneyplus.com',
+  hulu: 'https://www.hulu.com',
+  prime_video: 'https://app.primevideo.com',
+  max: 'https://play.max.com',
+  apple_tv: 'https://tv.apple.com',
+  spotify: 'https://open.spotify.com',
 }
 
 export interface PairableTvDevice extends TvDevice {
@@ -163,6 +180,14 @@ export function createAndroidTv(
       if (code === undefined)
         throw new Error(`Unsupported remote key: ${key}`)
       r.sendKey(code)
+    },
+
+    async launchApp(app: StreamingApp) {
+      const r = await ensureConnected()
+      const link = APP_LINKS[app]
+      if (!link)
+        throw new Error(`Unsupported app: ${app}`)
+      r.sendAppLink(link)
     },
   }
 }
